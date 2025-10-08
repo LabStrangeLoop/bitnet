@@ -32,17 +32,27 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+
 
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false  # Set to true when ready
+disallow_untyped_defs = false
+
+# Ignore missing imports from libraries without stubs
+ignore_missing_imports = true
+
+# Allow subclassing Any
+disallow_subclassing_any = false
 
 [dependency-groups]
 dev = [
     "pre-commit>=4.3.0",
+    "types-tqdm>=4.67.0.20250809",
 ]

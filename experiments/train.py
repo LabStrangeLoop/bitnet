@@ -5,13 +5,15 @@ import os
 import random
 import time
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR, StepLR
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
 from experiments.datasets.factory import get_dataset
@@ -46,14 +48,14 @@ def get_optimizer(model: nn.Module, opt_name: str, lr: float, momentum: float = 
 
 
 def get_scheduler(optimizer: optim.Optimizer, scheduler_name: str,
-                  epochs: int) -> optim.lr_scheduler._LRScheduler:
+                  epochs: int) -> CosineAnnealingLR | StepLR | LambdaLR:
     """Create learning rate scheduler."""
     if scheduler_name == 'cosine':
-        return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+        return CosineAnnealingLR(optimizer, T_max=epochs)
     elif scheduler_name == 'step':
-        return optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+        return StepLR(optimizer, step_size=30, gamma=0.1)
     elif scheduler_name == 'none':
-        return optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: 1.0)
+        return LambdaLR(optimizer, lambda epoch: 1.0)
     else:
         raise ValueError(f"Unknown scheduler: {scheduler_name}")
 
@@ -194,8 +196,8 @@ def main(args: argparse.Namespace) -> None:
         pin_memory=True
     )
 
-    print(f"Train samples: {len(train_dataset)}")
-    print(f"Test samples: {len(test_dataset)}")
+    print(f"Train samples: {len(cast(list, train_dataset))}")
+    print(f"Test samples: {len(cast(list, test_dataset))}")
 
     # Create model
     print(f"\nCreating {args.model} ({'bit-quantized' if args.bit_version else 'standard'})...")
@@ -260,7 +262,7 @@ def main(args: argparse.Namespace) -> None:
             writer.add_scalar('epoch/test_acc', test_acc, epoch)
             writer.add_scalar('epoch/lr', optimizer.param_groups[0]['lr'], epoch)
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
         print(f"  Test Loss:  {test_loss:.4f} | Test Acc:  {test_acc:.2f}%")
 
