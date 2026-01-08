@@ -1,37 +1,65 @@
-"""Dataset factory for loading and preprocessing datasets."""
+"""Dataset factory for loading datasets."""
+
+from torch.utils.data import Dataset
+from torchvision import datasets as tv_datasets
+from torchvision import transforms
+
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
-import torchvision.datasets as tv_datasets
-import torchvision.transforms as transforms
-from torchvision.datasets import VisionDataset
+def get_train_transform(image_size: int = 224) -> transforms.Compose:
+    return transforms.Compose([
+        transforms.RandomResizedCrop(image_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+    ])
 
 
-def get_transforms(transform_type: str, dataset_name: str) -> transforms.Compose:
-    """Get transforms for a dataset."""
-    if transform_type == "standard":
-        return transforms.Compose([
-            transforms.Resize(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-    raise ValueError(f"Unknown transform type: {transform_type}")
+def get_eval_transform(image_size: int = 224) -> transforms.Compose:
+    return transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+    ])
 
 
-def get_dataset(
-    name: str, split: str, transform_type: str = "standard", root: str = "./data"
-) -> VisionDataset:
-    """Get dataset from torchvision or HuggingFace."""
-    transform = get_transforms(transform_type, name)
-    train = split == "train"
+class HFImageNetDataset(Dataset):
+    """ImageNet dataset wrapper for HuggingFace datasets."""
 
-    torchvision_datasets: dict[str, type[VisionDataset]] = {
-        "cifar10": tv_datasets.CIFAR10,
-        "cifar100": tv_datasets.CIFAR100,
-    }
+    def __init__(self, hf_dataset, transform):
+        self.dataset = hf_dataset
+        self.transform = transform
 
-    if name in torchvision_datasets:
-        return torchvision_datasets[name](
-            root=root, train=train, transform=transform, download=True # type: ignore
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, idx: int):
+        item = self.dataset[idx]
+        image = item["image"].convert("RGB")
+        label = item["label"]
+        if self.transform:
+            image = self.transform(image)
+        return image, label
+
+
+def get_dataset(name: str, split: str, root: str = "./data") -> Dataset:
+    transform = get_train_transform() if split == "train" else get_eval_transform()
+    is_train = split == "train"
+
+    if name == "cifar10":
+        return tv_datasets.CIFAR10(root, train=is_train, transform=transform, download=True)
+    if name == "cifar100":
+        return tv_datasets.CIFAR100(root, train=is_train, transform=transform, download=True)
+    if name == "imagenet":
+        import datasets
+
+        hf_split = "train" if is_train else "validation"
+        hf_dataset = datasets.load_dataset(
+            "imagenet-1k", split=hf_split, cache_dir=root, trust_remote_code=True
         )
+        return HFImageNetDataset(hf_dataset, transform)
 
     raise ValueError(f"Unknown dataset: {name}")
