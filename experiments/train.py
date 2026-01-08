@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import random
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,35 +16,12 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
+from experiments import checkpoint, logging_config
 from experiments.datasets.factory import get_dataset
 from experiments.models.factory import get_model
 
 DATASET_NUM_CLASSES = {"cifar10": 10, "cifar100": 100, "imagenet": 1000}
-
 log = logging.getLogger(__name__)
-
-
-def setup_logging(output_dir: Path, resume: bool = False) -> None:
-    """Configure logging to both console and file."""
-    log_format = "%(asctime)s | %(levelname)-8s | %(message)s"
-    date_format = "%Y-%m-%d %H:%M:%S"
-
-    # Clear existing handlers
-    root = logging.getLogger()
-    root.handlers.clear()
-    root.setLevel(logging.INFO)
-
-    # Console handler
-    console = logging.StreamHandler(sys.stdout)
-    console.setFormatter(logging.Formatter(log_format, date_format))
-    root.addHandler(console)
-
-    # File handler (append if resuming, overwrite if fresh)
-    log_file = output_dir / "train.log"
-    file_mode = "a" if resume else "w"
-    file_handler = logging.FileHandler(log_file, mode=file_mode)
-    file_handler.setFormatter(logging.Formatter(log_format, date_format))
-    root.addHandler(file_handler)
 
 
 def set_seed(seed: int) -> None:
@@ -74,8 +50,7 @@ def get_scheduler(
 
     if warmup_epochs > 0:
         warmup = LambdaLR(optimizer, lambda e: (e + 1) / warmup_epochs)
-        main = make_main_scheduler()
-        return SequentialLR(optimizer, [warmup, main], milestones=[warmup_epochs])
+        return SequentialLR(optimizer, [warmup, make_main_scheduler()], milestones=[warmup_epochs])
     return make_main_scheduler()
 
 
@@ -88,7 +63,6 @@ def train_epoch(
 ) -> tuple[float, float]:
     model.train()
     total_loss, correct, total = 0.0, 0, 0
-
     for inputs, targets in tqdm(loader, desc="Training", leave=False):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
@@ -96,11 +70,9 @@ def train_epoch(
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
-
         total_loss += loss.item() * inputs.size(0)
         correct += outputs.argmax(1).eq(targets).sum().item()
         total += targets.size(0)
-
     return total_loss / total, 100.0 * correct / total
 
 
@@ -110,79 +82,27 @@ def evaluate(
 ) -> tuple[float, float]:
     model.eval()
     total_loss, correct, total = 0.0, 0, 0
-
     for inputs, targets in tqdm(loader, desc="Evaluating", leave=False):
         inputs, targets = inputs.to(device), targets.to(device)
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-
         total_loss += loss.item() * inputs.size(0)
         correct += outputs.argmax(1).eq(targets).sum().item()
         total += targets.size(0)
-
     return total_loss / total, 100.0 * correct / total
-
-
-def save_checkpoint(
-    output_dir: Path,
-    epoch: int,
-    model: nn.Module,
-    optimizer: optim.Optimizer,
-    scheduler: Any,
-    best_acc: float,
-    history: dict,
-) -> None:
-    state = model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict()
-    checkpoint = {
-        "epoch": epoch,
-        "model_state_dict": state,
-        "optimizer_state_dict": optimizer.state_dict(),
-        "scheduler_state_dict": scheduler.state_dict(),
-        "best_acc": best_acc,
-        "history": history,
-    }
-    torch.save(checkpoint, output_dir / "checkpoint.pth")
-
-
-def load_checkpoint(
-    output_dir: Path,
-    model: nn.Module,
-    optimizer: optim.Optimizer,
-    scheduler: Any,
-) -> tuple[int, float, dict]:
-    checkpoint_path = output_dir / "checkpoint.pth"
-    if not checkpoint_path.exists():
-        return 0, 0.0, {"train_loss": [], "train_acc": [], "test_loss": [], "test_acc": []}
-
-    checkpoint = torch.load(checkpoint_path, weights_only=False)
-    if isinstance(model, nn.DataParallel):
-        model.module.load_state_dict(checkpoint["model_state_dict"])
-    else:
-        model.load_state_dict(checkpoint["model_state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-
-    log.info("Resumed from epoch %d (best_acc=%.2f%%)", checkpoint["epoch"], checkpoint["best_acc"])
-    return checkpoint["epoch"], checkpoint["best_acc"], checkpoint["history"]
 
 
 def train(config: dict[str, Any]) -> dict[str, Any]:
     set_seed(config["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Output directory (setup early for logging)
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Check if resuming before setting up logging
-    checkpoint_exists = (output_dir / "checkpoint.pth").exists()
-    setup_logging(output_dir, resume=checkpoint_exists)
-
-    # Log experiment configuration
+    logging_config.setup(output_dir, resume=checkpoint.exists(output_dir))
     version = "bit" if config["bit_version"] else "std"
     log.info("=" * 60)
     log.info(
-        "Starting experiment: %s %s on %s (seed=%d)",
+        "Experiment: %s %s on %s (seed=%d)",
         config["model"],
         version,
         config["dataset"],
@@ -190,7 +110,7 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     )
     log.info("Device: %s (GPUs: %d)", device, torch.cuda.device_count())
     log.info(
-        "Hyperparameters: lr=%.4f, wd=%.0e, batch=%d, epochs=%d",
+        "Hyperparams: lr=%.4f, wd=%.0e, batch=%d, epochs=%d",
         config["lr"],
         config["weight_decay"],
         config["batch_size"],
@@ -199,10 +119,9 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     log.info("=" * 60)
 
     # Data
-    log.info("Loading dataset: %s", config["dataset"])
     train_set = get_dataset(config["dataset"], "train", root=config["data_dir"])
     test_set = get_dataset(config["dataset"], "test", root=config["data_dir"])
-    log.info("Train samples: %d, Test samples: %d", len(train_set), len(test_set))  # type: ignore[arg-type]
+    log.info("Dataset: %s (train=%d, test=%d)", config["dataset"], len(train_set), len(test_set))  # type: ignore[arg-type]
     train_loader = DataLoader(
         train_set,
         config["batch_size"],
@@ -219,12 +138,12 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Model
-    log.info("Building model: %s", config["model"])
     num_classes = DATASET_NUM_CLASSES.get(config["dataset"], 10)
     model = get_model(config["model"], num_classes, config["bit_version"], config["pretrained"])
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
     model = model.to(device)
+    log.info("Model: %s (%s)", config["model"], version)
 
     # Training setup
     criterion = nn.CrossEntropyLoss()
@@ -238,14 +157,11 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     scheduler = get_scheduler(
         optimizer, config["scheduler"], config["epochs"], config.get("warmup_epochs", 0)
     )
-
-    # Save config
     (output_dir / "config.json").write_text(json.dumps(config, indent=2))
 
-    # Resume from checkpoint if exists
-    start_epoch, best_acc, history = load_checkpoint(output_dir, model, optimizer, scheduler)
+    start_epoch, best_acc, history = checkpoint.load(output_dir, model, optimizer, scheduler)
 
-    # TensorBoard (purge old logs if starting fresh)
+    # TensorBoard
     tb_dir = output_dir / "tensorboard"
     if start_epoch == 0 and tb_dir.exists():
         import shutil
@@ -291,8 +207,7 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
             torch.save(state, output_dir / "best_model.pth")
             log.info("New best model saved (acc=%.2f%%)", best_acc)
 
-        # Save checkpoint every epoch
-        save_checkpoint(output_dir, epoch, model, optimizer, scheduler, best_acc, history)
+        checkpoint.save(output_dir, epoch, model, optimizer, scheduler, best_acc, history)
 
     if writer:
         writer.close()
@@ -304,15 +219,12 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
         "config": config,
     }
     (output_dir / "results.json").write_text(json.dumps(results, indent=2))
-
-    # Clean up checkpoint after successful completion
-    (output_dir / "checkpoint.pth").unlink(missing_ok=True)
+    checkpoint.cleanup(output_dir)
 
     log.info("=" * 60)
     log.info("Training complete! Best accuracy: %.2f%%", best_acc)
     log.info("Results saved to: %s", output_dir)
     log.info("=" * 60)
-
     return results
 
 
@@ -338,7 +250,6 @@ def main() -> None:
     config = vars(args)
     version = "bit" if args.bit_version else "std"
     config["output_dir"] = f"{args.output_dir}/{args.model}_{version}_{args.dataset}_s{args.seed}"
-
     train(config)
 
 
