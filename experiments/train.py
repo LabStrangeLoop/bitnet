@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import torch
 from torch import nn, optim
-from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR, StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR, SequentialLR, StepLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
@@ -32,16 +32,24 @@ def set_seed(seed: int) -> None:
 
 
 def get_scheduler(
-    optimizer: optim.Optimizer, name: str, epochs: int
-) -> CosineAnnealingLR | StepLR | LambdaLR:
-    schedulers = {
-        "cosine": lambda: CosineAnnealingLR(optimizer, T_max=epochs),
-        "step": lambda: StepLR(optimizer, step_size=30, gamma=0.1),
-        "none": lambda: LambdaLR(optimizer, lambda _: 1.0),
-    }
-    if name not in schedulers:
-        raise ValueError(f"Unknown scheduler: {name}")
-    return schedulers[name]()
+    optimizer: optim.Optimizer, name: str, epochs: int, warmup_epochs: int = 0
+) -> SequentialLR | CosineAnnealingLR | StepLR | LambdaLR:
+    def make_main_scheduler() -> CosineAnnealingLR | StepLR | LambdaLR:
+        main_epochs = epochs - warmup_epochs
+        schedulers = {
+            "cosine": lambda: CosineAnnealingLR(optimizer, T_max=main_epochs),
+            "step": lambda: StepLR(optimizer, step_size=30, gamma=0.1),
+            "none": lambda: LambdaLR(optimizer, lambda _: 1.0),
+        }
+        if name not in schedulers:
+            raise ValueError(f"Unknown scheduler: {name}")
+        return schedulers[name]()
+
+    if warmup_epochs > 0:
+        warmup = LambdaLR(optimizer, lambda e: (e + 1) / warmup_epochs)
+        main = make_main_scheduler()
+        return SequentialLR(optimizer, [warmup, main], milestones=[warmup_epochs])
+    return make_main_scheduler()
 
 
 def train_epoch(
@@ -165,7 +173,9 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     optimizer = optim.SGD(
         model.parameters(), lr=config["lr"], momentum=0.9, weight_decay=config["weight_decay"]
     )
-    scheduler = get_scheduler(optimizer, config["scheduler"], config["epochs"])
+    scheduler = get_scheduler(
+        optimizer, config["scheduler"], config["epochs"], config.get("warmup_epochs", 0)
+    )
 
     # Output directory
     output_dir = Path(config["output_dir"])
@@ -245,8 +255,9 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=0.1)
-    parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--scheduler", default="cosine", choices=["cosine", "step", "none"])
+    parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--data-dir", default="./data")
