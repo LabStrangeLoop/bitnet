@@ -66,6 +66,16 @@ uv run python -m experiments.sweep
 uv run python -m experiments.sweep --models resnet18 resnet50 --datasets cifar10 cifar100
 ```
 
+### Monitoring with TensorBoard
+
+```bash
+# Local machine
+uv run tensorboard --logdir results/raw
+
+# Remote server (accessible from browser)
+uv run tensorboard --logdir results/raw --bind_all --port 6006
+```
+
 ### Analysis
 
 After experiments complete:

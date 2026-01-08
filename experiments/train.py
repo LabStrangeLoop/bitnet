@@ -88,6 +88,49 @@ def evaluate(
     return total_loss / total, 100.0 * correct / total
 
 
+def save_checkpoint(
+    output_dir: Path,
+    epoch: int,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    scheduler: Any,
+    best_acc: float,
+    history: dict,
+) -> None:
+    state = model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict()
+    checkpoint = {
+        "epoch": epoch,
+        "model_state_dict": state,
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict(),
+        "best_acc": best_acc,
+        "history": history,
+    }
+    torch.save(checkpoint, output_dir / "checkpoint.pth")
+
+
+def load_checkpoint(
+    output_dir: Path,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    scheduler: Any,
+) -> tuple[int, float, dict]:
+    checkpoint_path = output_dir / "checkpoint.pth"
+    if not checkpoint_path.exists():
+        return 0, 0.0, {"train_loss": [], "train_acc": [], "test_loss": [], "test_acc": []}
+
+    checkpoint = torch.load(checkpoint_path, weights_only=False)
+    if isinstance(model, nn.DataParallel):
+        model.module.load_state_dict(checkpoint["model_state_dict"])
+    else:
+        model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+
+    print(f"Resumed from epoch {checkpoint['epoch']}")
+    return checkpoint["epoch"], checkpoint["best_acc"], checkpoint["history"]
+
+
 def train(config: dict[str, Any]) -> dict[str, Any]:
     set_seed(config["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -129,18 +172,17 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "config.json").write_text(json.dumps(config, indent=2))
 
-    writer = SummaryWriter(output_dir / "tensorboard") if config.get("tensorboard") else None
+    # Resume from checkpoint if exists
+    start_epoch, best_acc, history = load_checkpoint(output_dir, model, optimizer, scheduler)
 
-    # Training loop
-    best_acc = 0.0
-    history: dict[str, list[float]] = {
-        "train_loss": [],
-        "train_acc": [],
-        "test_loss": [],
-        "test_acc": [],
-    }
+    # TensorBoard (purge old logs if starting fresh)
+    tb_dir = output_dir / "tensorboard"
+    if start_epoch == 0 and tb_dir.exists():
+        import shutil
+        shutil.rmtree(tb_dir)
+    writer = SummaryWriter(tb_dir) if config.get("tensorboard") else None
 
-    for epoch in range(1, config["epochs"] + 1):
+    for epoch in range(start_epoch + 1, config["epochs"] + 1):
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         test_loss, test_acc = evaluate(model, test_loader, criterion, device)
         scheduler.step()
@@ -174,6 +216,9 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
             )
             torch.save(state, output_dir / "best_model.pth")
 
+        # Save checkpoint every epoch
+        save_checkpoint(output_dir, epoch, model, optimizer, scheduler, best_acc, history)
+
     if writer:
         writer.close()
 
@@ -184,6 +229,10 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
         "config": config,
     }
     (output_dir / "results.json").write_text(json.dumps(results, indent=2))
+
+    # Clean up checkpoint after successful completion
+    (output_dir / "checkpoint.pth").unlink(missing_ok=True)
+
     return results
 
 
