@@ -75,7 +75,7 @@ def get_dataset(name: str, split: str, root: str = "./data") -> Dataset:
 
         transform = get_imagenet_train_transform() if is_train else get_imagenet_eval_transform()
         hf_split = "train" if is_train else "validation"
-        hf_dataset = datasets.load_dataset("imagenet-1k", split=hf_split, cache_dir=root)
+        hf_dataset = datasets.load_dataset("ILSVRC/imagenet-1k", split=hf_split, cache_dir=root)
         return HFImageNetDataset(hf_dataset, transform)
 
     raise ValueError(f"Unknown dataset: {name}")
