@@ -26,7 +26,7 @@ def main() -> None:
 
     for split in splits:
         print(f"Downloading {split} split...")
-        load_dataset("imagenet-1k", split=split, cache_dir=str(data_dir), trust_remote_code=True)
+        load_dataset("imagenet-1k", split=split, cache_dir=str(data_dir))
         print(f"Downloaded {split} split to {data_dir}")
 
     print("Done!")
