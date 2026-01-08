@@ -255,7 +255,7 @@ def main() -> None:
     parser.add_argument("--model", default="resnet18")
     parser.add_argument("--dataset", default="cifar10", choices=list(DATASET_NUM_CLASSES.keys()))
     parser.add_argument("--bit-version", action="store_true")
-    parser.add_argument("--pretrained", action="store_true", default=True)
+    parser.add_argument("--pretrained", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=0.1)
