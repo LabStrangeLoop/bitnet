@@ -4,10 +4,9 @@ from torch.utils.data import Dataset
 from torchvision import datasets as tv_datasets
 from torchvision import transforms
 
+# Use ImageNet normalization for all datasets when fine-tuning pretrained models
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
-CIFAR_MEAN = [0.4914, 0.4822, 0.4465]
-CIFAR_STD = [0.2470, 0.2435, 0.2616]
 
 
 def get_cifar_train_transform() -> transforms.Compose:
@@ -15,14 +14,14 @@ def get_cifar_train_transform() -> transforms.Compose:
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
     ])
 
 
 def get_cifar_eval_transform() -> transforms.Compose:
     return transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
     ])
 
 

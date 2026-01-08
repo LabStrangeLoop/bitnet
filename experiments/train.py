@@ -171,7 +171,11 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     # Training setup
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(
-        model.parameters(), lr=config["lr"], momentum=0.9, weight_decay=config["weight_decay"]
+        model.parameters(),
+        lr=config["lr"],
+        momentum=0.9,
+        weight_decay=config["weight_decay"],
+        nesterov=True,
     )
     scheduler = get_scheduler(
         optimizer, config["scheduler"], config["epochs"], config.get("warmup_epochs", 0)
@@ -257,7 +261,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--scheduler", default="cosine", choices=["cosine", "step", "none"])
-    parser.add_argument("--warmup-epochs", type=int, default=5)
+    parser.add_argument("--warmup-epochs", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--data-dir", default="./data")
