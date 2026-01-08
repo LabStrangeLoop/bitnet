@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import torch
 from torch import nn, optim
-from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR, SequentialLR, StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR, LRScheduler, SequentialLR, StepLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
@@ -33,8 +33,8 @@ def set_seed(seed: int) -> None:
 
 def get_scheduler(
     optimizer: optim.Optimizer, name: str, epochs: int, warmup_epochs: int = 0
-) -> SequentialLR | CosineAnnealingLR | StepLR | LambdaLR:
-    def make_main_scheduler() -> CosineAnnealingLR | StepLR | LambdaLR:
+) -> LRScheduler:
+    def make_main_scheduler() -> LRScheduler:
         main_epochs = epochs - warmup_epochs
         schedulers = {
             "cosine": lambda: CosineAnnealingLR(optimizer, T_max=main_epochs),
@@ -193,6 +193,7 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     tb_dir = output_dir / "tensorboard"
     if start_epoch == 0 and tb_dir.exists():
         import shutil
+
         shutil.rmtree(tb_dir)
     writer = SummaryWriter(tb_dir) if config.get("tensorboard") else None
 

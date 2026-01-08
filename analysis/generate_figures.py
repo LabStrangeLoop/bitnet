@@ -31,7 +31,8 @@ def accuracy_comparison_plot(df: pd.DataFrame, output_path: Path) -> None:
 
 
 def training_curves_plot(
-    df: pd.DataFrame, output_path: Path  # noqa: ARG001
+    df: pd.DataFrame,
+    output_path: Path,  # noqa: ARG001
 ) -> None:
     """Plot training curves from history (if available in results)."""
     # Placeholder - implement when results with history are available

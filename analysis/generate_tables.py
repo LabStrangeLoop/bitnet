@@ -36,11 +36,13 @@ def accuracy_table(df: pd.DataFrame) -> str:
             f"{bit_mean:.2f} & {bit_std:.2f} \\\\"
         )
 
-    lines.extend([
-        r"\bottomrule",
-        r"\end{tabular}",
-        r"\end{table}",
-    ])
+    lines.extend(
+        [
+            r"\bottomrule",
+            r"\end{tabular}",
+            r"\end{table}",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -66,12 +68,14 @@ def statistical_table(comparisons: pd.DataFrame) -> str:
             f"{row['t_stat']:.2f} & {row['p_value']:.3f}{sig} & {row['cohens_d']:.2f} \\\\"
         )
 
-    lines.extend([
-        r"\bottomrule",
-        r"\multicolumn{6}{l}{\footnotesize * $p < 0.05$} \\",
-        r"\end{tabular}",
-        r"\end{table}",
-    ])
+    lines.extend(
+        [
+            r"\bottomrule",
+            r"\multicolumn{6}{l}{\footnotesize * $p < 0.05$} \\",
+            r"\end{tabular}",
+            r"\end{table}",
+        ]
+    )
     return "\n".join(lines)
 
 

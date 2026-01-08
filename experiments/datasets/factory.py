@@ -10,37 +10,45 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
 def get_cifar_train_transform() -> transforms.Compose:
-    return transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
 
 def get_cifar_eval_transform() -> transforms.Compose:
-    return transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
 
 def get_imagenet_train_transform(image_size: int = 224) -> transforms.Compose:
-    return transforms.Compose([
-        transforms.RandomResizedCrop(image_size),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.RandomResizedCrop(image_size),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
 
 def get_imagenet_eval_transform(image_size: int = 224) -> transforms.Compose:
-    return transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
 
 class HFImageNetDataset(Dataset):
@@ -68,7 +76,7 @@ def get_dataset(name: str, split: str, root: str = "./data") -> Dataset:
     if name in ("cifar10", "cifar100"):
         transform = get_cifar_train_transform() if is_train else get_cifar_eval_transform()
         dataset_cls = tv_datasets.CIFAR10 if name == "cifar10" else tv_datasets.CIFAR100
-        return dataset_cls(root, train=is_train, transform=transform, download=True)
+        return dataset_cls(root, train=is_train, transform=transform, download=True)  # type: ignore[no-any-return]
 
     if name == "imagenet":
         import datasets
@@ -76,6 +84,7 @@ def get_dataset(name: str, split: str, root: str = "./data") -> Dataset:
         transform = get_imagenet_train_transform() if is_train else get_imagenet_eval_transform()
         hf_split = "train" if is_train else "validation"
         hf_dataset = datasets.load_dataset("ILSVRC/imagenet-1k", split=hf_split, cache_dir=root)
-        return HFImageNetDataset(hf_dataset, transform)
+        result: Dataset = HFImageNetDataset(hf_dataset, transform)
+        return result
 
     raise ValueError(f"Unknown dataset: {name}")

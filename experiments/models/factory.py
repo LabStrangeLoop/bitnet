@@ -1,4 +1,5 @@
 """Model factory for creating standard and bit-quantized models."""
+
 import timm
 from torch import nn
 
@@ -23,11 +24,7 @@ def get_model(
     Returns:
         PyTorch model
     """
-    model = timm.create_model(
-        name,
-        num_classes=num_classes,
-        pretrained=pretrained
-    )
+    model = timm.create_model(name, num_classes=num_classes, pretrained=pretrained)
 
     if bit_version:
         replace_layers(model)
@@ -35,6 +32,6 @@ def get_model(
     return model
 
 
-def list_available_models(pattern: str = '*') -> list[str]:
+def list_available_models(pattern: str = "*") -> list[str]:
     """List available models from timm."""
     return timm.list_models(pattern)

@@ -34,12 +34,19 @@ def run_experiment(config: dict, output_dir: str, epochs: int, dry_run: bool = F
         return True
 
     cmd = [
-        sys.executable, "-m", "experiments.train",
-        "--model", config["model"],
-        "--dataset", config["dataset"],
-        "--seed", str(config["seed"]),
-        "--epochs", str(epochs),
-        "--output-dir", output_dir,
+        sys.executable,
+        "-m",
+        "experiments.train",
+        "--model",
+        config["model"],
+        "--dataset",
+        config["dataset"],
+        "--seed",
+        str(config["seed"]),
+        "--epochs",
+        str(epochs),
+        "--output-dir",
+        output_dir,
     ]
     if config["bit_version"]:
         cmd.append("--bit-version")
@@ -64,10 +71,9 @@ def main() -> None:
     args = parser.parse_args()
 
     configs = [
-        c for c in get_experiment_configs()
-        if c["model"] in args.models
-        and c["dataset"] in args.datasets
-        and c["seed"] in args.seeds
+        c
+        for c in get_experiment_configs()
+        if c["model"] in args.models and c["dataset"] in args.datasets and c["seed"] in args.seeds
     ]
 
     print(f"Total experiments: {len(configs)}")

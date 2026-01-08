@@ -27,4 +27,5 @@ def quantize_activations(x: Tensor, num_bits: int = 8) -> tuple[Tensor, Tensor]:
 def dequantize(x: Tensor, gamma: Tensor, beta: Tensor, num_bits: int = 8) -> Tensor:
     """Dequantize output: x × βγ / Q_b"""
     q_b = 2 ** (num_bits - 1)
-    return x * gamma * beta / q_b
+    result: Tensor = x * gamma * beta / q_b
+    return result
