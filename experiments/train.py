@@ -2,8 +2,10 @@
 
 import argparse
 import json
+import logging
 import os
 import random
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +21,31 @@ from experiments.datasets.factory import get_dataset
 from experiments.models.factory import get_model
 
 DATASET_NUM_CLASSES = {"cifar10": 10, "cifar100": 100, "imagenet": 1000}
+
+log = logging.getLogger(__name__)
+
+
+def setup_logging(output_dir: Path, resume: bool = False) -> None:
+    """Configure logging to both console and file."""
+    log_format = "%(asctime)s | %(levelname)-8s | %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+
+    # Clear existing handlers
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(logging.INFO)
+
+    # Console handler
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(logging.Formatter(log_format, date_format))
+    root.addHandler(console)
+
+    # File handler (append if resuming, overwrite if fresh)
+    log_file = output_dir / "train.log"
+    file_mode = "a" if resume else "w"
+    file_handler = logging.FileHandler(log_file, mode=file_mode)
+    file_handler.setFormatter(logging.Formatter(log_format, date_format))
+    root.addHandler(file_handler)
 
 
 def set_seed(seed: int) -> None:
@@ -135,7 +162,7 @@ def load_checkpoint(
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-    print(f"Resumed from epoch {checkpoint['epoch']}")
+    log.info("Resumed from epoch %d (best_acc=%.2f%%)", checkpoint["epoch"], checkpoint["best_acc"])
     return checkpoint["epoch"], checkpoint["best_acc"], checkpoint["history"]
 
 
@@ -143,9 +170,39 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     set_seed(config["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Output directory (setup early for logging)
+    output_dir = Path(config["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if resuming before setting up logging
+    checkpoint_exists = (output_dir / "checkpoint.pth").exists()
+    setup_logging(output_dir, resume=checkpoint_exists)
+
+    # Log experiment configuration
+    version = "bit" if config["bit_version"] else "std"
+    log.info("=" * 60)
+    log.info(
+        "Starting experiment: %s %s on %s (seed=%d)",
+        config["model"],
+        version,
+        config["dataset"],
+        config["seed"],
+    )
+    log.info("Device: %s (GPUs: %d)", device, torch.cuda.device_count())
+    log.info(
+        "Hyperparameters: lr=%.4f, wd=%.0e, batch=%d, epochs=%d",
+        config["lr"],
+        config["weight_decay"],
+        config["batch_size"],
+        config["epochs"],
+    )
+    log.info("=" * 60)
+
     # Data
+    log.info("Loading dataset: %s", config["dataset"])
     train_set = get_dataset(config["dataset"], "train", root=config["data_dir"])
     test_set = get_dataset(config["dataset"], "test", root=config["data_dir"])
+    log.info("Train samples: %d, Test samples: %d", len(train_set), len(test_set))  # type: ignore[arg-type]
     train_loader = DataLoader(
         train_set,
         config["batch_size"],
@@ -162,6 +219,7 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Model
+    log.info("Building model: %s", config["model"])
     num_classes = DATASET_NUM_CLASSES.get(config["dataset"], 10)
     model = get_model(config["model"], num_classes, config["bit_version"], config["pretrained"])
     if torch.cuda.device_count() > 1:
@@ -181,9 +239,7 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
         optimizer, config["scheduler"], config["epochs"], config.get("warmup_epochs", 0)
     )
 
-    # Output directory
-    output_dir = Path(config["output_dir"])
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Save config
     (output_dir / "config.json").write_text(json.dumps(config, indent=2))
 
     # Resume from checkpoint if exists
@@ -216,10 +272,13 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
             ]:
                 writer.add_scalar(f"epoch/{name}", val, epoch)
 
-        print(
-            f"Epoch {epoch:3d} | "
-            f"Train: {train_loss:.4f} / {train_acc:.2f}% | "
-            f"Test: {test_loss:.4f} / {test_acc:.2f}%"
+        log.info(
+            "Epoch %3d | Train: %.4f / %.2f%% | Test: %.4f / %.2f%%",
+            epoch,
+            train_loss,
+            train_acc,
+            test_loss,
+            test_acc,
         )
 
         if test_acc > best_acc:
@@ -230,6 +289,7 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
                 else model.state_dict()
             )
             torch.save(state, output_dir / "best_model.pth")
+            log.info("New best model saved (acc=%.2f%%)", best_acc)
 
         # Save checkpoint every epoch
         save_checkpoint(output_dir, epoch, model, optimizer, scheduler, best_acc, history)
@@ -247,6 +307,11 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
 
     # Clean up checkpoint after successful completion
     (output_dir / "checkpoint.pth").unlink(missing_ok=True)
+
+    log.info("=" * 60)
+    log.info("Training complete! Best accuracy: %.2f%%", best_acc)
+    log.info("Results saved to: %s", output_dir)
+    log.info("=" * 60)
 
     return results
 
