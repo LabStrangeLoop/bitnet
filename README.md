@@ -28,13 +28,16 @@ Downloaded automatically on first run.
 ### ImageNet-1k
 Requires HuggingFace authentication:
 
-```bash
-# 1. Create account at huggingface.co
-# 2. Accept ImageNet terms at: https://huggingface.co/datasets/imagenet-1k
-# 3. Login
-uv run huggingface-cli login
+1. Create account at [huggingface.co](https://huggingface.co)
+2. Get access token at [Settings > Tokens](https://huggingface.co/settings/tokens) (click "New token", select "Read")
+3. Accept ImageNet terms at [imagenet-1k dataset page](https://huggingface.co/datasets/imagenet-1k)
+4. Login and download:
 
-# 4. Download (~150GB, takes several hours)
+```bash
+# Login (paste your token when prompted)
+uv run python -c "from huggingface_hub import login; login()"
+
+# Download (~150GB, takes several hours)
 uv run python scripts/download_imagenet.py --data-dir ./data
 ```
 
