@@ -7,6 +7,10 @@ import pandas as pd
 
 def accuracy_table(df: pd.DataFrame) -> str:
     """Generate LaTeX table comparing standard vs bit accuracy by model and dataset."""
+    versions = df["version"].unique()
+    if len(versions) < 2:
+        return f"% Insufficient data: only {list(versions)} version(s) available"
+
     pivot = df.pivot_table(
         values="best_acc",
         index=["model", "dataset"],
@@ -27,27 +31,29 @@ def accuracy_table(df: pd.DataFrame) -> str:
 
     for idx, row in pivot.iterrows():
         model, dataset = idx  # type: ignore[misc]
-        std_mean = row[("mean", "std")]
-        std_std = row[("std", "std")]
-        bit_mean = row[("mean", "bit")]
-        bit_std = row[("std", "bit")]
-        lines.append(
-            f"{model} & {dataset} & {std_mean:.2f} & {std_std:.2f} & "
-            f"{bit_mean:.2f} & {bit_std:.2f} \\\\"
-        )
+        std_mean = row.get(("mean", "std"), float("nan"))
+        std_std = row.get(("std", "std"), float("nan"))
+        bit_mean = row.get(("mean", "bit"), float("nan"))
+        bit_std = row.get(("std", "bit"), float("nan"))
 
-    lines.extend(
-        [
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{table}",
-        ]
-    )
+        std_mean_str = f"{std_mean:.2f}" if pd.notna(std_mean) else "-"
+        std_std_str = f"{std_std:.2f}" if pd.notna(std_std) else "-"
+        bit_mean_str = f"{bit_mean:.2f}" if pd.notna(bit_mean) else "-"
+        bit_std_str = f"{bit_std:.2f}" if pd.notna(bit_std) else "-"
+
+        cols = [model, dataset, std_mean_str, std_std_str, bit_mean_str, bit_std_str]
+        lines.append(" & ".join(cols) + r" \\")
+
+    lines.extend([r"\bottomrule", r"\end{tabular}", r"\end{table}"])
     return "\n".join(lines)
 
 
 def statistical_table(comparisons: pd.DataFrame) -> str:
     """Generate LaTeX table with statistical test results."""
+    valid = comparisons[~comparisons.get("error", pd.Series([False] * len(comparisons))).notna()]
+    if len(valid) == 0:
+        return "% No valid statistical comparisons available"
+
     lines = [
         r"\begin{table}[h]",
         r"\centering",
@@ -59,9 +65,7 @@ def statistical_table(comparisons: pd.DataFrame) -> str:
         r"\midrule",
     ]
 
-    for _, row in comparisons.iterrows():
-        if "error" in row and pd.notna(row.get("error")):
-            continue
+    for _, row in valid.iterrows():
         sig = "*" if row["significant"] else ""
         lines.append(
             f"{row['model']} & {row['dataset']} & {row['diff']:.2f} & "
@@ -96,6 +100,9 @@ if __name__ == "__main__":
     from analysis.statistical_analysis import run_all_comparisons
 
     df = load_results()
-    if len(df) > 0:
-        comparisons = run_all_comparisons(df)
-        save_tables(df, comparisons)
+    if len(df) == 0:
+        print("No results found")
+        raise SystemExit(0)
+
+    comparisons = run_all_comparisons(df)
+    save_tables(df, comparisons)
