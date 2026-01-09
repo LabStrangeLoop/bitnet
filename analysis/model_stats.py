@@ -2,9 +2,9 @@
 
 from torch import nn
 
+from experiments.config import MODELS
 from experiments.models.factory import get_model
 
-MODELS = ["resnet18", "resnet50"]
 FP32_BITS = 32
 BITNET_WEIGHT_BITS = 1.58  # log2(3) for ternary {-1, 0, +1}
 BITNET_ACTIVATION_BITS = 8

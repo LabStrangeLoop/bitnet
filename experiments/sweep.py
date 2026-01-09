@@ -6,9 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-MODELS = ["resnet18", "resnet50", "vgg16", "mobilenetv2_100", "efficientnet_b0"]
-DATASETS = ["cifar10", "cifar100", "imagenet"]
-SEEDS = [42, 123, 456]
+from experiments.config import DATASETS, MODELS, SEEDS
+
 VERSIONS = [False, True]  # standard, bit
 
 

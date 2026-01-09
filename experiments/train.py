@@ -17,10 +17,10 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
 from experiments import checkpoint, logging_config
+from experiments.config import DATASET_NUM_CLASSES
 from experiments.datasets.factory import get_dataset
 from experiments.models.factory import get_model
 
-DATASET_NUM_CLASSES = {"cifar10": 10, "cifar100": 100, "imagenet": 1000}
 log = logging.getLogger(__name__)
 
 
