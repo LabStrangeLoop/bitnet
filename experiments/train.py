@@ -16,10 +16,10 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
-from experiments import checkpoint, logging_config
 from experiments.config import DATASET_NUM_CLASSES
 from experiments.datasets.factory import get_dataset
 from experiments.models.factory import get_model
+from experiments.training import checkpoint, logging_config
 
 log = logging.getLogger(__name__)
 
