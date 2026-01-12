@@ -69,6 +69,9 @@ uv run python -m experiments.sweep
 
 # Run subset
 uv run python -m experiments.sweep --models resnet18 resnet50 --datasets cifar10 cifar100
+
+# With different augmentation levels
+uv run python -m experiments.sweep --augments basic randaug cutout full
 ```
 
 ### Monitoring with TensorBoard
@@ -136,6 +139,33 @@ uv run mypy .
 - Deterministic CUDA operations
 - Complete environment in `uv.lock`
 - Hardware: 2x NVIDIA RTX A6000
+
+## Experiment Plan
+
+### Main Experiments
+
+Compare standard FP32 vs BitNet 1.58-bit across:
+
+- **Models**: ResNet-18, ResNet-50, VGG-16, MobileNetV2, EfficientNet-B0
+- **Datasets**: CIFAR-10, CIFAR-100, ImageNet-1k
+- **Seeds**: 3 seeds per configuration for statistical significance
+
+### Augmentation Ablation Study
+
+Investigate how data augmentation affects the accuracy gap between FP32 and BitNet:
+
+| Level      | Augmentation                  | Description                            |
+| ---------- | ----------------------------- | -------------------------------------- |
+| `basic`    | Crop + Flip                   | Baseline (RandomCrop, HorizontalFlip)  |
+| `randaug`  | + RandAugment                 | Learned augmentation policy            |
+| `cutout`   | + RandomErasing               | Patch-based regularization             |
+| `full`     | RandAugment + RandomErasing   | SOTA augmentation                      |
+
+**Research questions:**
+
+1. Does the FP32-BitNet accuracy gap narrow with stronger augmentation?
+2. Which augmentation benefits BitNet the most?
+3. What is the "true" accuracy cost of 1.58-bit quantization under SOTA training?
 
 ## Citation
 

@@ -17,7 +17,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
 from experiments.config import DATASET_NUM_CLASSES
-from experiments.datasets.factory import get_dataset
+from experiments.datasets.factory import AUGMENT_CHOICES, get_dataset
 from experiments.models.factory import get_model
 from experiments.training import checkpoint, logging_config
 
@@ -119,7 +119,8 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     log.info("=" * 60)
 
     # Data
-    train_set = get_dataset(config["dataset"], "train", root=config["data_dir"])
+    augment = config.get("augment", "basic")
+    train_set = get_dataset(config["dataset"], "train", root=config["data_dir"], augment=augment)
     test_set = get_dataset(config["dataset"], "test", root=config["data_dir"])
     log.info("Dataset: %s (train=%d, test=%d)", config["dataset"], len(train_set), len(test_set))  # type: ignore[arg-type]
     train_loader = DataLoader(
@@ -240,6 +241,7 @@ def main() -> None:
     parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--scheduler", default="cosine", choices=["cosine", "step", "none"])
     parser.add_argument("--warmup-epochs", type=int, default=0)
+    parser.add_argument("--augment", default="basic", choices=AUGMENT_CHOICES)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--data-dir", default="./data")
@@ -249,7 +251,9 @@ def main() -> None:
 
     config = vars(args)
     version = "bit" if args.bit_version else "std"
-    config["output_dir"] = f"{args.output_dir}/{args.model}_{version}_{args.dataset}_s{args.seed}"
+    aug_suffix = f"_{args.augment}" if args.augment != "basic" else ""
+    run_name = f"{args.model}_{version}_{args.dataset}{aug_suffix}_s{args.seed}"
+    config["output_dir"] = f"{args.output_dir}/{run_name}"
     train(config)
 
 
