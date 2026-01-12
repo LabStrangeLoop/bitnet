@@ -127,8 +127,8 @@ bitnet/
 ## Development
 
 ```bash
-uv sync --all-extras
-uv run pre-commit install
+uv sync --group dev
+uv run python -m pre_commit install
 uv run ruff check .
 uv run mypy .
 ```
