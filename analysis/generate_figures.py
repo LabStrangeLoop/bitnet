@@ -9,9 +9,7 @@ import seaborn as sns
 from experiments.datasets.factory import AUGMENT_CHOICES
 
 
-def accuracy_comparison_plot(
-    df: pd.DataFrame, output_path: Path, augment: str = "basic"
-) -> None:
+def accuracy_comparison_plot(df: pd.DataFrame, output_path: Path, augment: str = "basic") -> None:
     """Bar plot comparing standard vs bit accuracy for each model/dataset."""
     if "augment" in df.columns:
         df = df[df["augment"] == augment]
@@ -43,9 +41,7 @@ def accuracy_comparison_plot(
     plt.close()
 
 
-def accuracy_delta_heatmap(
-    df: pd.DataFrame, output_path: Path, augment: str = "basic"
-) -> None:
+def accuracy_delta_heatmap(df: pd.DataFrame, output_path: Path, augment: str = "basic") -> None:
     """Heatmap showing accuracy difference (std - bit) for each model/dataset."""
     if "augment" in df.columns:
         df = df[df["augment"] == augment]
@@ -85,12 +81,14 @@ def augmentation_gap_plot(df: pd.DataFrame, output_path: Path) -> None:
         std_acc = group[group["version"] == "std"]["best_acc"].mean()
         bit_acc = group[group["version"] == "bit"]["best_acc"].mean()
         if pd.notna(std_acc) and pd.notna(bit_acc):
-            gaps.append({
-                "model": model,
-                "dataset": dataset,
-                "augment": augment,
-                "gap": std_acc - bit_acc,
-            })
+            gaps.append(
+                {
+                    "model": model,
+                    "dataset": dataset,
+                    "augment": augment,
+                    "gap": std_acc - bit_acc,
+                }
+            )
 
     if not gaps:
         return

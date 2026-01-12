@@ -31,10 +31,12 @@ def get_cifar_train_transform(augment: str = "basic") -> transforms.Compose:
     elif augment == "full":
         base.insert(0, transforms.RandAugment(num_ops=2, magnitude=9))
 
-    base.extend([
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    base.extend(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
     if augment in ("cutout", "full"):
         base.append(transforms.RandomErasing(p=0.5, scale=(0.02, 0.33)))
@@ -43,10 +45,12 @@ def get_cifar_train_transform(augment: str = "basic") -> transforms.Compose:
 
 
 def get_cifar_eval_transform() -> transforms.Compose:
-    return transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
 
 def get_imagenet_train_transform(
@@ -61,10 +65,12 @@ def get_imagenet_train_transform(
     if augment in ("randaug", "full"):
         base.insert(0, transforms.RandAugment(num_ops=2, magnitude=9))
 
-    base.extend([
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    base.extend(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
     if augment in ("cutout", "full"):
         base.append(transforms.RandomErasing(p=0.5, scale=(0.02, 0.33)))
@@ -73,12 +79,14 @@ def get_imagenet_train_transform(
 
 
 def get_imagenet_eval_transform(image_size: int = 224) -> transforms.Compose:
-    return transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
 
 
 class HFImageNetDataset(Dataset):

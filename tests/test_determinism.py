@@ -86,6 +86,7 @@ class TestDeterminism:
 
     def test_multiple_steps_reproducible(self) -> None:
         """Multiple training steps should be reproducible."""
+
         def run_multiple_steps(seed: int, num_steps: int = 3) -> list[float]:
             set_seed(seed)
             model = _create_model()

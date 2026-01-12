@@ -26,9 +26,7 @@ def get_experiment_configs(augments: list[str]):
         }
 
 
-def run_experiment(
-    config: dict, output_dir: str, epochs: int, dry_run: bool = False
-) -> bool:
+def run_experiment(config: dict, output_dir: str, epochs: int, dry_run: bool = False) -> bool:
     """Run a single experiment."""
     version = "bit" if config["bit_version"] else "std"
     aug_suffix = f"_{config['augment']}" if config["augment"] != "basic" else ""
@@ -75,18 +73,14 @@ def main() -> None:
     parser.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
     parser.add_argument("--datasets", nargs="+", default=DATASETS, choices=DATASETS)
     parser.add_argument("--seeds", nargs="+", type=int, default=SEEDS)
-    parser.add_argument(
-        "--augments", nargs="+", default=["basic"], choices=AUGMENT_CHOICES
-    )
+    parser.add_argument("--augments", nargs="+", default=["basic"], choices=AUGMENT_CHOICES)
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running")
     args = parser.parse_args()
 
     configs = [
         c
         for c in get_experiment_configs(args.augments)
-        if c["model"] in args.models
-        and c["dataset"] in args.datasets
-        and c["seed"] in args.seeds
+        if c["model"] in args.models and c["dataset"] in args.datasets and c["seed"] in args.seeds
     ]
 
     print(f"Total experiments: {len(configs)}")
