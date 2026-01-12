@@ -252,8 +252,8 @@ def main() -> None:
     config = vars(args)
     version = "bit" if args.bit_version else "std"
     aug_suffix = f"_{args.augment}" if args.augment != "basic" else ""
-    run_name = f"{args.model}_{version}_{args.dataset}{aug_suffix}_s{args.seed}"
-    config["output_dir"] = f"{args.output_dir}/{run_name}"
+    run_name = f"{version}{aug_suffix}_s{args.seed}"
+    config["output_dir"] = f"{args.output_dir}/{args.dataset}/{args.model}/{run_name}"
     train(config)
 
 
