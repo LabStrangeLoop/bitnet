@@ -7,10 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from experiments.config import DATASETS, MODELS, SEEDS
+from experiments.config import DATASETS, DEFAULTS, MODELS, SEEDS, Version
 from experiments.datasets.factory import AUGMENT_CHOICES
-
-VERSIONS = [False, True]  # standard, bit
 
 # Global state for interrupt handler
 _sweep_state = {"completed": 0, "failed": 0, "skipped": 0, "total": 0}
@@ -18,14 +16,12 @@ _sweep_state = {"completed": 0, "failed": 0, "skipped": 0, "total": 0}
 
 def get_experiment_configs(augments: list[str]):
     """Generate all experiment configurations."""
-    for model, dataset, seed, bit_version, augment in itertools.product(
-        MODELS, DATASETS, SEEDS, VERSIONS, augments
-    ):
+    for model, dataset, seed, version, augment in itertools.product(MODELS, DATASETS, SEEDS, Version, augments):
         yield {
             "model": model,
             "dataset": dataset,
             "seed": seed,
-            "bit_version": bit_version,
+            "version": version,
             "augment": augment,
         }
 
@@ -39,17 +35,12 @@ def run_experiment(
     dry_run: bool = False,
 ) -> str:
     """Run a single experiment. Returns 'completed', 'skipped', or 'failed'."""
-    version = "bit" if config["bit_version"] else "std"
+    version: Version = config["version"]
     aug_suffix = f"_{config['augment']}" if config["augment"] != "basic" else ""
-    run_name = f"{config['model']}_{version}_{config['dataset']}{aug_suffix}_s{config['seed']}"
+    run_name = f"{config['model']}_{version.value}_{config['dataset']}{aug_suffix}_s{config['seed']}"
 
     # Check hierarchical output structure
-    run_dir = (
-        Path(output_dir)
-        / config["dataset"]
-        / config["model"]
-        / f"{version}{aug_suffix}_s{config['seed']}"
-    )
+    run_dir = Path(output_dir) / config["dataset"] / config["model"] / f"{version.value}{aug_suffix}_s{config['seed']}"
 
     prefix = f"[{index}/{total}]"
 
@@ -75,7 +66,7 @@ def run_experiment(
         output_dir,
         "--quiet",
     ]
-    if config["bit_version"]:
+    if version == Version.BIT:
         cmd.append("--bit-version")
 
     print(f"{prefix} Running {run_name}...", end=" ", flush=True)
@@ -104,10 +95,7 @@ def print_summary() -> None:
     """Print sweep summary."""
     state = _sweep_state
     print(f"\n{'=' * 40}")
-    print(
-        f"Sweep Summary: {state['completed']} completed, "
-        f"{state['skipped']} skipped, {state['failed']} failed"
-    )
+    print(f"Sweep Summary: {state['completed']} completed, {state['skipped']} skipped, {state['failed']} failed")
     print(f"{'=' * 40}")
 
 
@@ -120,8 +108,8 @@ def handle_interrupt(_signum: int, _frame: object) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output-dir", default="results/raw")
-    parser.add_argument("--epochs", type=int, default=200)
+    parser.add_argument("--output-dir", default=DEFAULTS.output_dir)
+    parser.add_argument("--epochs", type=int, default=DEFAULTS.epochs)
     parser.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
     parser.add_argument("--datasets", nargs="+", default=DATASETS, choices=DATASETS)
     parser.add_argument("--seeds", nargs="+", type=int, default=SEEDS)
