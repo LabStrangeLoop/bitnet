@@ -60,10 +60,13 @@ def train_epoch(
     criterion: nn.Module,
     optimizer: optim.Optimizer,
     device: torch.device,
+    *,
+    quiet: bool = False,
 ) -> tuple[float, float]:
     model.train()
     total_loss, correct, total = 0.0, 0, 0
-    for inputs, targets in tqdm(loader, desc="Training", leave=False):
+    iterator = loader if quiet else tqdm(loader, desc="Training", leave=False)
+    for inputs, targets in iterator:
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -78,11 +81,17 @@ def train_epoch(
 
 @torch.no_grad()
 def evaluate(
-    model: nn.Module, loader: DataLoader, criterion: nn.Module, device: torch.device
+    model: nn.Module,
+    loader: DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
+    *,
+    quiet: bool = False,
 ) -> tuple[float, float]:
     model.eval()
     total_loss, correct, total = 0.0, 0, 0
-    for inputs, targets in tqdm(loader, desc="Evaluating", leave=False):
+    iterator = loader if quiet else tqdm(loader, desc="Evaluating", leave=False)
+    for inputs, targets in iterator:
         inputs, targets = inputs.to(device), targets.to(device)
         outputs = model(inputs)
         loss = criterion(outputs, targets)
@@ -98,7 +107,8 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logging_config.setup(output_dir, resume=checkpoint.exists(output_dir))
+    quiet = config.get("quiet", False)
+    logging_config.setup(output_dir, resume=checkpoint.exists(output_dir), quiet=quiet)
     version = "bit" if config["bit_version"] else "std"
     log.info("=" * 60)
     log.info(
@@ -171,8 +181,10 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     writer = SummaryWriter(tb_dir) if config.get("tensorboard") else None
 
     for epoch in range(start_epoch + 1, config["epochs"] + 1):
-        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
-        test_loss, test_acc = evaluate(model, test_loader, criterion, device)
+        train_loss, train_acc = train_epoch(
+            model, train_loader, criterion, optimizer, device, quiet=quiet
+        )
+        test_loss, test_acc = evaluate(model, test_loader, criterion, device, quiet=quiet)
         scheduler.step()
 
         history["train_loss"].append(train_loss)
@@ -222,10 +234,9 @@ def train(config: dict[str, Any]) -> dict[str, Any]:
     (output_dir / "results.json").write_text(json.dumps(results, indent=2))
     checkpoint.cleanup(output_dir)
 
-    log.info("=" * 60)
-    log.info("Training complete! Best accuracy: %.2f%%", best_acc)
+    # Use warning level so it shows even in quiet mode
+    log.warning("Training complete! Best accuracy: %.2f%%", best_acc)
     log.info("Results saved to: %s", output_dir)
-    log.info("=" * 60)
     return results
 
 
@@ -247,6 +258,7 @@ def main() -> None:
     parser.add_argument("--data-dir", default="./data")
     parser.add_argument("--output-dir", default="results/raw")
     parser.add_argument("--tensorboard", action="store_true", default=True)
+    parser.add_argument("--quiet", action="store_true", help="Suppress progress bars")
     args = parser.parse_args()
 
     config = vars(args)
