@@ -1,5 +1,92 @@
 """Experiment configuration: models, datasets, and seeds."""
 
+from dataclasses import dataclass, field
+from enum import Enum
+
+
+class Version(Enum):
+    """Model version: standard (FP32) or bit-quantized (1.58-bit)."""
+
+    STD = "std"
+    BIT = "bit"
+
+    @classmethod
+    def from_bool(cls, bit_version: bool) -> "Version":
+        """Convert boolean flag to Version enum."""
+        return cls.BIT if bit_version else cls.STD
+
+
+@dataclass
+class TrainConfig:
+    """Training configuration with typed fields and defaults."""
+
+    model: str = "resnet18"
+    dataset: str = "cifar10"
+    version: Version = Version.STD
+    pretrained: bool = False
+    epochs: int = 200
+    batch_size: int = 128
+    lr: float = 0.1
+    weight_decay: float = 5e-4
+    scheduler: str = "cosine"
+    warmup_epochs: int = 0
+    augment: str = "basic"
+    seed: int = 42
+    num_workers: int = 4
+    data_dir: str = "./data"
+    output_dir: str = field(default="")  # Set dynamically based on other fields
+    tensorboard: bool = True
+    quiet: bool = False
+
+    def __post_init__(self) -> None:
+        """Set output_dir if not provided."""
+        if not self.output_dir:
+            aug_suffix = f"_{self.augment}" if self.augment != "basic" else ""
+            run_name = f"{self.version.value}{aug_suffix}_s{self.seed}"
+            self.output_dir = f"results/raw/{self.dataset}/{self.model}/{run_name}"
+
+
+# Convenience: default values for argparse (frozen to prevent modification)
+@dataclass(frozen=True)
+class Defaults:
+    """Default values for argparse. Use TrainConfig for runtime configuration."""
+
+    model: str = "resnet18"
+    dataset: str = "cifar10"
+    epochs: int = 200
+    batch_size: int = 128
+    lr: float = 0.1
+    weight_decay: float = 5e-4
+    scheduler: str = "cosine"
+    seed: int = 42
+    num_workers: int = 4
+    data_dir: str = "./data"
+    output_dir: str = "results/raw"
+
+
+DEFAULTS = Defaults()
+
+
+@dataclass
+class EpochMetrics:
+    """Metrics for a single training epoch."""
+
+    train_loss: float
+    train_acc: float
+    test_loss: float
+    test_acc: float
+
+    def as_dict(self) -> dict[str, float]:
+        """Return metrics as a dictionary for logging."""
+        return {
+            "train_loss": self.train_loss,
+            "train_acc": self.train_acc,
+            "test_loss": self.test_loss,
+            "test_acc": self.test_acc,
+        }
+
+
+# Experiment matrix
 MODELS = ["resnet18", "resnet50", "vgg16", "mobilenetv2_100", "efficientnet_b0"]
 DATASETS = ["cifar10", "cifar100", "imagenet"]
 SEEDS = [42, 123, 456]
