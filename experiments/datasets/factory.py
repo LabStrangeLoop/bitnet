@@ -1,5 +1,6 @@
 """Dataset factory for loading datasets."""
 
+import datasets as hf_datasets
 from torch.utils.data import Dataset
 from torchvision import datasets as tv_datasets
 from torchvision import transforms
@@ -53,9 +54,7 @@ def get_cifar_eval_transform() -> transforms.Compose:
     )
 
 
-def get_imagenet_train_transform(
-    image_size: int = 224, augment: str = "basic"
-) -> transforms.Compose:
+def get_imagenet_train_transform(image_size: int = 224, augment: str = "basic") -> transforms.Compose:
     """Get ImageNet training transform with specified augmentation level."""
     base = [
         transforms.RandomResizedCrop(image_size),
@@ -125,14 +124,12 @@ def get_dataset(name: str, split: str, root: str = "./data", augment: str = "bas
         return dataset_cls(root, train=is_train, transform=transform, download=True)  # type: ignore[no-any-return]
 
     if name == "imagenet":
-        import datasets
-
         if is_train:
             transform = get_imagenet_train_transform(augment=augment)
         else:
             transform = get_imagenet_eval_transform()
         hf_split = "train" if is_train else "validation"
-        hf_dataset = datasets.load_dataset("ILSVRC/imagenet-1k", split=hf_split, cache_dir=root)
+        hf_dataset = hf_datasets.load_dataset("ILSVRC/imagenet-1k", split=hf_split, cache_dir=root)
         result: Dataset = HFImageNetDataset(hf_dataset, transform)
         return result
 
