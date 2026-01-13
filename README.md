@@ -56,6 +56,9 @@ uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 2
 
 # BitNet version
 uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 200 --bit-version
+
+# Quiet mode (suppress progress bars and per-epoch logs, useful for batch runs)
+uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 200 --quiet
 ```
 
 ### Full Experiment Sweep
@@ -65,6 +68,7 @@ uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 2
 uv run python -m experiments.sweep --dry-run
 
 # Run all experiments (90 total: 5 models × 3 datasets × 2 versions × 3 seeds)
+# Uses --quiet mode automatically, shows compact progress: [1/90] Running... 92.34%
 uv run python -m experiments.sweep
 
 # Run subset
@@ -72,6 +76,8 @@ uv run python -m experiments.sweep --models resnet18 resnet50 --datasets cifar10
 
 # With different augmentation levels
 uv run python -m experiments.sweep --augments basic randaug cutout full
+
+# Ctrl+C shows summary of completed/skipped/failed experiments
 ```
 
 ### Monitoring with TensorBoard
