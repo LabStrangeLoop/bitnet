@@ -1,0 +1,404 @@
+% 1.58-bit Convolutional Neural Networks: A Systematic Comparison Study
+% Flexible template - can adapt to various conference styles
+%
+% Usage:
+%   - For arXiv/preprint: use as-is with article class
+%   - For conference: replace documentclass and add style file
+%   - Common targets: NeurIPS, ICML, CVPR, ICLR, AAAI
+
+\documentclass[11pt]{article}
+
+% =============================================================================
+% CONFERENCE ADAPTATION
+% =============================================================================
+% Uncomment ONE of these blocks when targeting a specific venue:
+%
+% --- NeurIPS ---
+% \usepackage{neurips_2024}  % or neurips_2025
+%
+% --- ICML ---
+% \usepackage{icml2024}
+%
+% --- CVPR/ICCV ---
+% \usepackage[review]{cvpr}  % or [final] for camera-ready
+%
+% --- ICLR ---
+% \usepackage{iclr2024_conference}
+%
+% =============================================================================
+
+% Core packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+% Algorithm packages (optional, uncomment if needed)
+% \usepackage{algorithm}
+% \usepackage{algorithmic}
+
+% Figure/table placement
+\usepackage{float}
+
+% Subcaptions for multi-panel figures
+\usepackage{subcaption}
+
+% Handle missing files gracefully (for skeleton builds before analysis runs)
+\newcommand{\inputifexists}[1]{%
+  \IfFileExists{#1}{\input{#1}}{%
+    \textit{[Placeholder: run analysis pipeline to generate this table]}%
+  }%
+}
+\newcommand{\includefigureifexists}[2]{%
+  \IfFileExists{#1}{\includegraphics[#2]{#1}}{%
+    \fbox{\parbox{0.6\linewidth}{\centering\textit{[Placeholder figure]\\Run analysis pipeline to generate}}}%
+  }%
+}
+
+% =============================================================================
+% CUSTOM COMMANDS
+% =============================================================================
+
+% Model/method names
+\newcommand{\bitnet}{BitNet}
+\newcommand{\bitnetb}{BitNet b1.58}
+
+% Math shortcuts
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\expect}{\mathbb{E}}
+
+% Highlight for TODOs (remove before submission)
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\fixme}[1]{\textcolor{orange}{[FIXME: #1]}}
+
+% =============================================================================
+% METADATA
+% =============================================================================
+
+\title{1.58-bit Convolutional Neural Networks:\\A Systematic Comparison Study}
+
+\author{
+  Author Name\\
+  Affiliation\\
+  \texttt{email@example.com}
+  % Add more authors as needed
+}
+
+\date{}
+
+% =============================================================================
+% DOCUMENT
+% =============================================================================
+
+\begin{document}
+
+\maketitle
+
+% =============================================================================
+% ABSTRACT
+% =============================================================================
+
+\begin{abstract}
+We present a systematic comparison of \bitnetb{} (ternary weights $\{-1, 0, +1\}$) applied to convolutional neural networks against standard FP32 models. Our study spans five architectures (ResNet-18/50, VGG-16, MobileNetV2, EfficientNet-B0) across CIFAR-10, CIFAR-100, and ImageNet-1k. We investigate the accuracy-compression trade-off and conduct ablation studies on data augmentation to understand its interaction with extreme weight quantization. Our experiments reveal that \todo{key finding 1}, \todo{key finding 2}, and \todo{key finding 3}. We release our implementation and all experimental configurations for full reproducibility.
+\end{abstract}
+
+% =============================================================================
+% 1. INTRODUCTION
+% =============================================================================
+
+\section{Introduction}
+\label{sec:intro}
+
+Neural network quantization has emerged as a critical technique for deploying models on resource-constrained devices. While post-training quantization to 8-bit integers is well-established, recent work on extreme quantization---particularly 1-bit and 1.58-bit networks---has shown promising results for large language models~\cite{wang2023bitnet,ma2024bitnetb158}.
+
+\textbf{Motivation.} The \bitnetb{} approach quantizes weights to ternary values $\{-1, 0, +1\}$, achieving a theoretical compression ratio of $20.3\times$ compared to FP32 weights. While this has been studied extensively for transformers, its application to convolutional neural networks remains underexplored.
+
+\textbf{Gap.} Prior work on binary/ternary CNNs~\cite{courbariaux2015binaryconnect,rastegari2016xnornet} predates the \bitnet{} formulation and uses different quantization schemes. A systematic study of \bitnetb{} for CNNs---spanning multiple architectures, datasets, and training configurations---is missing from the literature.
+
+\textbf{Contributions.} We make the following contributions:
+\begin{enumerate}
+    \item A systematic benchmark of \bitnetb{} applied to five CNN architectures across three image classification datasets.
+    \item An ablation study on data augmentation, revealing \todo{key insight about augmentation-quantization interaction}.
+    \item Statistical analysis with multiple random seeds, providing confidence intervals and significance tests.
+    \item An open-source implementation with reproducible training pipeline.
+\end{enumerate}
+
+% =============================================================================
+% 2. RELATED WORK
+% =============================================================================
+
+\section{Related Work}
+\label{sec:related}
+
+\textbf{Binary and Ternary Neural Networks.}
+BinaryConnect~\cite{courbariaux2015binaryconnect} introduced binary weights trained with the straight-through estimator (STE). XNOR-Net~\cite{rastegari2016xnornet} extended this to both binary weights and activations. Ternary Weight Networks~\cite{li2016ternary} showed that adding a zero value significantly improves accuracy over strict binary quantization.
+
+\textbf{BitNet Family.}
+BitNet~\cite{wang2023bitnet} introduced 1-bit weight quantization for large language models. \bitnetb{}~\cite{ma2024bitnetb158} refined this to ternary weights $\{-1, 0, +1\}$, achieving performance matching FP16 Transformers while reducing inference cost. Our work extends this to CNNs.
+
+\textbf{Data Augmentation for CNNs.}
+Standard augmentation (random crop, horizontal flip) is essential for CIFAR~\cite{krizhevsky2009cifar}. Advanced techniques like Cutout~\cite{devries2017cutout}, AutoAugment~\cite{cubuk2019autoaugment}, and RandAugment~\cite{cubuk2020randaugment} further improve generalization. We investigate how augmentation interacts with extreme quantization.
+
+% =============================================================================
+% 3. METHOD
+% =============================================================================
+
+\section{Method}
+\label{sec:method}
+
+\subsection{BitNet Layer Implementation}
+
+We implement \bitnetb{} for both linear and convolutional layers. The forward pass consists of three steps:
+
+\textbf{1. Weight Quantization.} Weights are quantized to $\{-1, 0, +1\}$ using:
+\begin{equation}
+    \tilde{W} = \text{RoundClip}\left(\frac{W}{\gamma + \epsilon}, -1, 1\right), \quad \gamma = \frac{1}{n}\sum_{i}|W_i|
+\end{equation}
+where $\gamma$ is the mean absolute value and $\epsilon=10^{-5}$ ensures numerical stability.
+
+\textbf{2. Activation Quantization.} Activations are quantized to 8-bit using absmax quantization:
+\begin{equation}
+    \tilde{x} = \text{Clip}\left(x \cdot \frac{Q_b}{\gamma_x}, -Q_b, Q_b\right), \quad Q_b = 2^{b-1}
+\end{equation}
+where $\gamma_x = \max(|x|)$ and $b=8$ bits.
+
+\textbf{3. Dequantization.} After the matrix/convolution operation, outputs are scaled back:
+\begin{equation}
+    y = \frac{\gamma \cdot \gamma_x}{Q_b} \cdot (\tilde{W} \cdot \tilde{x})
+\end{equation}
+
+\textbf{Gradient Flow.} The straight-through estimator (STE) allows gradients to flow through quantization by using the identity function in the backward pass.
+
+\subsection{Model Conversion}
+
+We convert standard architectures from the \texttt{timm} library~\cite{rw2019timm} by replacing all \texttt{nn.Linear} and \texttt{nn.Conv2d} layers with their BitNet equivalents. Batch normalization and activation functions remain in FP32.
+
+\subsection{Training Protocol}
+
+All models are trained from scratch with:
+\begin{itemize}
+    \item Optimizer: SGD with momentum 0.9 and Nesterov acceleration
+    \item Learning rate: 0.1 with cosine annealing
+    \item Weight decay: $5 \times 10^{-4}$
+    \item Epochs: 200 (CIFAR), 90 (ImageNet)
+    \item Batch size: 128
+\end{itemize}
+
+% =============================================================================
+% 4. EXPERIMENTS
+% =============================================================================
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+
+\textbf{Datasets.} We evaluate on CIFAR-10 (10 classes, 50K train), CIFAR-100 (100 classes, 50K train), and ImageNet-1k (1000 classes, 1.28M train).
+
+\textbf{Models.} We compare five architectures: ResNet-18, ResNet-50~\cite{he2016resnet}, VGG-16~\cite{simonyan2014vgg}, MobileNetV2~\cite{sandler2018mobilenetv2}, and EfficientNet-B0~\cite{tan2019efficientnet}.
+
+\textbf{Augmentation Levels.} We ablate four augmentation configurations:
+\begin{itemize}
+    \item \textbf{Basic}: RandomCrop(32, padding=4) + RandomHorizontalFlip
+    \item \textbf{RandAug}: Basic + RandAugment(n=2, m=9)
+    \item \textbf{Cutout}: Basic + RandomErasing(p=0.5)
+    \item \textbf{Full}: RandAugment + RandomErasing
+\end{itemize}
+
+\textbf{Seeds.} All experiments run with seeds $\{42, 123, 456\}$. We report mean $\pm$ std.
+
+\subsection{Main Results}
+
+\todo{Insert Table 1: Main accuracy comparison}
+
+% Placeholder for generated table
+\begin{table}[h]
+\centering
+\caption{Classification accuracy (\%) on CIFAR and ImageNet with basic augmentation. FP32 vs BitNet b1.58. Mean $\pm$ std over 3 seeds. $\Delta$ shows the accuracy gap (negative = BitNet worse).}
+\label{tab:main_results}
+\inputifexists{tables/accuracy_basic.tex}  % Generated by analysis pipeline
+\end{table}
+
+\subsection{Augmentation Ablation}
+
+\todo{Insert Table 2: Augmentation ablation}
+
+\begin{table}[h]
+\centering
+\caption{Effect of augmentation on the FP32-BitNet accuracy gap. Stronger augmentation \todo{narrows/widens} the gap.}
+\label{tab:augmentation}
+\inputifexists{tables/augmentation_ablation.tex}  % Generated by analysis pipeline
+\end{table}
+
+\todo{Insert Figure 1: Gap vs augmentation level}
+
+\begin{figure}[h]
+\centering
+\includefigureifexists{figures/augmentation_gap.pdf}{width=0.8\linewidth}
+\caption{Accuracy gap between FP32 and BitNet across augmentation levels. \todo{Describe trend.}}
+\label{fig:augmentation_gap}
+\end{figure}
+
+\subsection{Statistical Analysis}
+
+\todo{Insert significance test results}
+
+We perform paired t-tests to assess whether the accuracy differences are statistically significant. \Cref{tab:statistics} shows that \todo{describe significance findings}.
+
+% =============================================================================
+% 5. DISCUSSION
+% =============================================================================
+
+\section{Discussion}
+\label{sec:discussion}
+
+\textbf{Accuracy vs. Compression Trade-off.}
+\todo{Discuss the observed gap and whether the 20x compression justifies it.}
+
+\textbf{Architecture Sensitivity.}
+\todo{Discuss which architectures are most/least affected by quantization.}
+
+\textbf{When is BitNet Viable?}
+\todo{Provide practical guidance on when to use BitNet CNNs.}
+
+\textbf{Limitations.}
+Our study has several limitations:
+\begin{itemize}
+    \item We train from scratch rather than fine-tuning pretrained models
+    \item We do not evaluate inference speed or energy consumption
+    \item We focus on classification; other tasks (detection, segmentation) may differ
+\end{itemize}
+
+% =============================================================================
+% 6. CONCLUSION
+% =============================================================================
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented a systematic study of \bitnetb{} applied to convolutional neural networks. Our experiments across five architectures and three datasets reveal that \todo{summarize key findings}. The augmentation ablation shows that \todo{key augmentation finding}. Our results suggest that \todo{practical implication}.
+
+\textbf{Future Work.} Promising directions include \todo{list 2-3 future directions}.
+
+% =============================================================================
+% ACKNOWLEDGMENTS (for camera-ready)
+% =============================================================================
+
+% \section*{Acknowledgments}
+% \todo{Add acknowledgments for camera-ready version.}
+
+% =============================================================================
+% REFERENCES
+% =============================================================================
+
+\bibliographystyle{plain}
+% \bibliography{references}  % Uncomment when references.bib exists
+
+% Temporary inline references for skeleton
+\begin{thebibliography}{99}
+
+\bibitem{wang2023bitnet}
+H.~Wang et al.
+\newblock BitNet: Scaling 1-bit Transformers for Large Language Models.
+\newblock \emph{arXiv:2310.11453}, 2023.
+
+\bibitem{ma2024bitnetb158}
+S.~Ma et al.
+\newblock The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits.
+\newblock \emph{arXiv:2402.17764}, 2024.
+
+\bibitem{courbariaux2015binaryconnect}
+M.~Courbariaux et al.
+\newblock BinaryConnect: Training Deep Neural Networks with Binary Weights during Propagations.
+\newblock \emph{NeurIPS}, 2015.
+
+\bibitem{rastegari2016xnornet}
+M.~Rastegari et al.
+\newblock XNOR-Net: ImageNet Classification Using Binary Convolutional Neural Networks.
+\newblock \emph{ECCV}, 2016.
+
+\bibitem{li2016ternary}
+F.~Li et al.
+\newblock Ternary Weight Networks.
+\newblock \emph{arXiv:1605.04711}, 2016.
+
+\bibitem{krizhevsky2009cifar}
+A.~Krizhevsky.
+\newblock Learning Multiple Layers of Features from Tiny Images.
+\newblock Technical report, 2009.
+
+\bibitem{devries2017cutout}
+T.~DeVries and G.~Taylor.
+\newblock Improved Regularization of Convolutional Neural Networks with Cutout.
+\newblock \emph{arXiv:1708.04552}, 2017.
+
+\bibitem{cubuk2019autoaugment}
+E.~Cubuk et al.
+\newblock AutoAugment: Learning Augmentation Strategies from Data.
+\newblock \emph{CVPR}, 2019.
+
+\bibitem{cubuk2020randaugment}
+E.~Cubuk et al.
+\newblock RandAugment: Practical Automated Data Augmentation with a Reduced Search Space.
+\newblock \emph{NeurIPS}, 2020.
+
+\bibitem{rw2019timm}
+R.~Wightman.
+\newblock PyTorch Image Models.
+\newblock \url{https://github.com/rwightman/pytorch-image-models}, 2019.
+
+\bibitem{he2016resnet}
+K.~He et al.
+\newblock Deep Residual Learning for Image Recognition.
+\newblock \emph{CVPR}, 2016.
+
+\bibitem{simonyan2014vgg}
+K.~Simonyan and A.~Zisserman.
+\newblock Very Deep Convolutional Networks for Large-Scale Image Recognition.
+\newblock \emph{ICLR}, 2015.
+
+\bibitem{sandler2018mobilenetv2}
+M.~Sandler et al.
+\newblock MobileNetV2: Inverted Residuals and Linear Bottlenecks.
+\newblock \emph{CVPR}, 2018.
+
+\bibitem{tan2019efficientnet}
+M.~Tan and Q.~Le.
+\newblock EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.
+\newblock \emph{ICML}, 2019.
+
+\end{thebibliography}
+
+% =============================================================================
+% APPENDIX (optional)
+% =============================================================================
+
+\appendix
+
+\section{Implementation Details}
+\label{app:implementation}
+
+\todo{Add detailed hyperparameters, architecture modifications, etc.}
+
+\section{Additional Results}
+\label{app:results}
+
+\todo{Add per-seed results, learning curves, etc.}
+
+\section{Reproducibility Checklist}
+\label{app:reproducibility}
+
+\begin{itemize}
+    \item Code: \url{https://github.com/LabStrangeLoop/bitnet}
+    \item Hardware: 2x NVIDIA RTX A6000 (48GB VRAM each)
+    \item Training time: \todo{Add estimated training times}
+    \item Random seeds: 42, 123, 456
+    \item Deterministic CUDA: Enabled via \texttt{torch.backends.cudnn.deterministic}
+\end{itemize}
+
+\end{document}
