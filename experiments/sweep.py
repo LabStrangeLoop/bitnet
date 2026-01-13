@@ -69,25 +69,35 @@ def run_experiment(
     if version == Version.BIT:
         cmd.append("--bit-version")
 
-    print(f"{prefix} Running {run_name}...", end=" ", flush=True)
+    print(f"{prefix} Running {run_name}...", flush=True)
     if dry_run:
-        print(f"\n  Command: {' '.join(cmd)}")
+        print(f"  Command: {' '.join(cmd)}")
         return "completed"
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        # Extract final accuracy from output
-        for line in result.stdout.splitlines()[::-1]:
+    # Stream output to show progress milestones in real-time
+    best_acc_line = None
+    error_line = None
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+        for line in proc.stdout:  # type: ignore[union-attr]
+            line = line.rstrip()
+            if "Progress:" in line or "Training complete" in line:
+                print(f"  {line}")
             if "Best accuracy" in line:
-                print(line.split("Best accuracy:")[-1].strip())
-                break
+                best_acc_line = line
+        proc.wait()
+        if proc.returncode != 0 and proc.stderr:
+            error_line = proc.stderr.read().strip().splitlines()[-1] if proc.stderr else None
+
+    if proc.returncode == 0:
+        if best_acc_line:
+            print(f"  Done: {best_acc_line.split('Best accuracy:')[-1].strip()}")
         else:
-            print("done")
+            print("  Done")
         return "completed"
     else:
-        print("FAILED")
-        if result.stderr:
-            print(f"  Error: {result.stderr.splitlines()[-1]}")
+        print("  FAILED")
+        if error_line:
+            print(f"  Error: {error_line}")
         return "failed"
 
 
