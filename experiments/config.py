@@ -16,6 +16,32 @@ class Version(Enum):
         return cls.BIT if bit_version else cls.STD
 
 
+class AblationMode(Enum):
+    """Layer-wise ablation: which layer(s) to keep in FP32 while quantizing rest.
+
+    For ResNet architectures:
+    - conv1: First convolutional layer (stem)
+    - layer1-4: Residual block groups
+    - fc: Final classifier layer
+    """
+
+    NONE = "none"  # Full BitNet (all layers quantized)
+    KEEP_CONV1 = "keep_conv1"  # Keep first conv in FP32
+    KEEP_LAYER1 = "keep_layer1"  # Keep first residual block in FP32
+    KEEP_LAYER4 = "keep_layer4"  # Keep last residual block in FP32
+    KEEP_FC = "keep_fc"  # Keep classifier in FP32
+
+
+# Mapping from ablation mode to layer name prefixes to skip
+ABLATION_SKIP_LAYERS: dict[AblationMode, set[str]] = {
+    AblationMode.NONE: set(),
+    AblationMode.KEEP_CONV1: {"conv1"},
+    AblationMode.KEEP_LAYER1: {"layer1"},
+    AblationMode.KEEP_LAYER4: {"layer4"},
+    AblationMode.KEEP_FC: {"fc", "head", "classifier"},  # Different model naming
+}
+
+
 @dataclass
 class TrainConfig:
     """Training configuration with typed fields and defaults."""
@@ -23,6 +49,7 @@ class TrainConfig:
     model: str = "resnet18"
     dataset: str = "cifar10"
     version: Version = Version.STD
+    ablation: AblationMode = AblationMode.NONE
     pretrained: bool = False
     epochs: int = 200
     batch_size: int = 128
@@ -42,7 +69,8 @@ class TrainConfig:
         """Set output_dir if not provided."""
         if not self.output_dir:
             aug_suffix = f"_{self.augment}" if self.augment != "basic" else ""
-            run_name = f"{self.version.value}{aug_suffix}_s{self.seed}"
+            abl_suffix = f"_{self.ablation.value}" if self.ablation != AblationMode.NONE else ""
+            run_name = f"{self.version.value}{aug_suffix}{abl_suffix}_s{self.seed}"
             self.output_dir = f"results/raw/{self.dataset}/{self.model}/{run_name}"
 
 
