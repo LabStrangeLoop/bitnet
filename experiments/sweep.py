@@ -7,22 +7,28 @@ import subprocess
 import sys
 from pathlib import Path
 
-from experiments.config import DATASETS, DEFAULTS, MODELS, SEEDS, Version
+from experiments.config import DATASETS, DEFAULTS, MODELS, SEEDS, AblationMode, Version
 from experiments.datasets.factory import AUGMENT_CHOICES
 
 # Global state for interrupt handler
 _sweep_state = {"completed": 0, "failed": 0, "skipped": 0, "total": 0}
 
 
-def get_experiment_configs(augments: list[str]):
+def get_experiment_configs(augments: list[str], ablations: list[AblationMode]):
     """Generate all experiment configurations."""
-    for model, dataset, seed, version, augment in itertools.product(MODELS, DATASETS, SEEDS, Version, augments):
+    for model, dataset, seed, version, augment, ablation in itertools.product(
+        MODELS, DATASETS, SEEDS, Version, augments, ablations
+    ):
+        # Ablation only makes sense for bit version
+        if ablation != AblationMode.NONE and version != Version.BIT:
+            continue
         yield {
             "model": model,
             "dataset": dataset,
             "seed": seed,
             "version": version,
             "augment": augment,
+            "ablation": ablation,
         }
 
 
@@ -36,11 +42,14 @@ def run_experiment(
 ) -> str:
     """Run a single experiment. Returns 'completed', 'skipped', or 'failed'."""
     version: Version = config["version"]
+    ablation: AblationMode = config["ablation"]
     aug_suffix = f"_{config['augment']}" if config["augment"] != "basic" else ""
-    run_name = f"{config['model']}_{version.value}_{config['dataset']}{aug_suffix}_s{config['seed']}"
+    abl_suffix = f"_{ablation.value}" if ablation != AblationMode.NONE else ""
+    run_name = f"{config['model']}_{version.value}_{config['dataset']}{aug_suffix}{abl_suffix}_s{config['seed']}"
 
     # Check hierarchical output structure
-    run_dir = Path(output_dir) / config["dataset"] / config["model"] / f"{version.value}{aug_suffix}_s{config['seed']}"
+    run_suffix = f"{version.value}{aug_suffix}{abl_suffix}_s{config['seed']}"
+    run_dir = Path(output_dir) / config["dataset"] / config["model"] / run_suffix
 
     prefix = f"[{index}/{total}]"
 
@@ -62,6 +71,8 @@ def run_experiment(
         str(epochs),
         "--augment",
         config["augment"],
+        "--ablation",
+        ablation.value,
         "--output-dir",
         output_dir,
         "--quiet",
@@ -117,6 +128,7 @@ def handle_interrupt(_signum: int, _frame: object) -> None:
 
 
 def main() -> None:
+    ablation_choices = [m.value for m in AblationMode]
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", default=DEFAULTS.output_dir)
     parser.add_argument("--epochs", type=int, default=DEFAULTS.epochs)
@@ -124,14 +136,16 @@ def main() -> None:
     parser.add_argument("--datasets", nargs="+", default=DATASETS, choices=DATASETS)
     parser.add_argument("--seeds", nargs="+", type=int, default=SEEDS)
     parser.add_argument("--augments", nargs="+", default=["basic"], choices=AUGMENT_CHOICES)
+    parser.add_argument("--ablations", nargs="+", default=["none"], choices=ablation_choices)
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running")
     args = parser.parse_args()
 
     signal.signal(signal.SIGINT, handle_interrupt)
 
+    ablation_modes = [AblationMode(a) for a in args.ablations]
     configs = [
         c
-        for c in get_experiment_configs(args.augments)
+        for c in get_experiment_configs(args.augments, ablation_modes)
         if c["model"] in args.models and c["dataset"] in args.datasets and c["seed"] in args.seeds
     ]
 
@@ -142,6 +156,7 @@ def main() -> None:
     print(f"Models: {args.models}")
     print(f"Datasets: {args.datasets}")
     print(f"Augments: {args.augments}")
+    print(f"Ablations: {args.ablations}")
     print(f"Seeds: {args.seeds}")
     print(f"Epochs: {args.epochs}")
     print()

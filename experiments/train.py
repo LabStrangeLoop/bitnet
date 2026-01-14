@@ -15,7 +15,15 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from experiments.config import DATASET_NUM_CLASSES, DEFAULTS, EpochMetrics, TrainConfig, Version
+from experiments.config import (
+    ABLATION_SKIP_LAYERS,
+    DATASET_NUM_CLASSES,
+    DEFAULTS,
+    AblationMode,
+    EpochMetrics,
+    TrainConfig,
+    Version,
+)
 from experiments.datasets.factory import AUGMENT_CHOICES, get_dataset
 from experiments.models.factory import get_model
 from experiments.training import checkpoint, logging_config
@@ -65,7 +73,8 @@ def train(config: TrainConfig) -> dict:
     # Model
     num_classes = DATASET_NUM_CLASSES.get(config.dataset, 10)
     is_bit = config.version == Version.BIT
-    model = get_model(config.model, num_classes, is_bit, config.pretrained)
+    skip_layers = ABLATION_SKIP_LAYERS.get(config.ablation, set())
+    model = get_model(config.model, num_classes, is_bit, config.pretrained, skip_layers)
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
     model = model.to(device)
@@ -83,6 +92,7 @@ def train(config: TrainConfig) -> dict:
     scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs)
     config_dict = dataclasses.asdict(config)
     config_dict["version"] = config.version.value  # Serialize enum
+    config_dict["ablation"] = config.ablation.value  # Serialize enum
     (output_dir / "config.json").write_text(json.dumps(config_dict, indent=2))
 
     start_epoch, best_acc, history = checkpoint.load(output_dir, model, optimizer, scheduler)
@@ -134,6 +144,12 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULTS.model)
     parser.add_argument("--dataset", default=DEFAULTS.dataset, choices=list(DATASET_NUM_CLASSES.keys()))
     parser.add_argument("--bit-version", action="store_true")
+    parser.add_argument(
+        "--ablation",
+        default="none",
+        choices=[m.value for m in AblationMode],
+        help="Layer-wise ablation: keep specified layer in FP32",
+    )
     parser.add_argument("--pretrained", action="store_true", default=False)
     parser.add_argument("--epochs", type=int, default=DEFAULTS.epochs)
     parser.add_argument("--batch-size", type=int, default=DEFAULTS.batch_size)
@@ -154,6 +170,7 @@ def main() -> None:
         model=args.model,
         dataset=args.dataset,
         version=Version.from_bool(args.bit_version),
+        ablation=AblationMode(args.ablation),
         pretrained=args.pretrained,
         epochs=args.epochs,
         batch_size=args.batch_size,
