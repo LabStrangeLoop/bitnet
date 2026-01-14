@@ -73,8 +73,6 @@ def run_experiment(
         config["augment"],
         "--ablation",
         ablation.value,
-        "--output-dir",
-        output_dir,
         "--quiet",
     ]
     if version == Version.BIT:
