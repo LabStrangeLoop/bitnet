@@ -80,6 +80,27 @@ uv run python -m experiments.sweep --augments basic randaug cutout full
 # Ctrl+C shows summary of completed/skipped/failed experiments
 ```
 
+### Layer-wise Ablation
+
+Investigate which layers contribute most to the accuracy gap by keeping specific layers in FP32:
+
+```bash
+# Single ablation experiment (keep first conv in FP32, rest quantized)
+uv run python -m experiments.train --model resnet18 --dataset cifar10 \
+    --bit-version --ablation keep_conv1
+
+# Available ablation modes:
+#   none        - Full BitNet (all layers quantized)
+#   keep_conv1  - Keep first conv layer in FP32
+#   keep_layer1 - Keep first residual block in FP32
+#   keep_layer4 - Keep last residual block in FP32
+#   keep_fc     - Keep classifier in FP32
+
+# Sweep all ablation modes
+uv run python -m experiments.sweep --models resnet18 --datasets cifar10 \
+    --ablations none keep_conv1 keep_layer1 keep_layer4 keep_fc
+```
+
 ### Monitoring with TensorBoard
 
 ```bash
@@ -117,17 +138,21 @@ uv run python -m analysis.generate_figures
 
 ```
 bitnet/
-├── bitnet/nn/           # 1.58-bit layer implementations
-│   ├── quantization.py  # Shared quantization functions
-│   ├── bitlinear.py     # BitLinear layer
-│   └── bitconv2d.py     # BitConv2d layer
+├── bitnet/
+│   ├── nn/                      # 1.58-bit layer implementations
+│   │   ├── quantization.py      # Shared quantization functions
+│   │   ├── bitlinear.py         # BitLinear layer
+│   │   └── bitconv2d.py         # BitConv2d layer
+│   ├── layer_swap.py            # Full model quantization
+│   └── layer_swap_selective.py  # Selective quantization (ablation)
 ├── experiments/
-│   ├── train.py         # Training script
-│   ├── sweep.py         # Experiment runner
-│   └── datasets/        # Dataset loaders
-├── analysis/            # Result analysis and paper generation
-├── results/raw/         # Experiment outputs
-└── paper/               # Generated tables and figures
+│   ├── train.py                 # Training script
+│   ├── sweep.py                 # Experiment runner
+│   ├── config.py                # Configuration and enums
+│   └── datasets/                # Dataset loaders
+├── analysis/                    # Result analysis and paper generation
+├── results/raw/                 # Experiment outputs
+└── paper/                       # LaTeX paper and generated tables/figures
 ```
 
 ## Development
