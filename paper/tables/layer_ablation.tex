@@ -1,0 +1,20 @@
+\begin{table}[h]
+\centering
+\caption{Layer-wise ablation on CIFAR10: accuracy when keeping specific layers in FP32}
+\label{tab:layer_ablation_cifar10}
+\begin{tabular}{llcc}
+\toprule
+Model & Ablation & Accuracy (\%) & Gap Recovery \\
+\midrule
+resnet18 & Full BitNet & 85.40 & 0\% \\
+resnet18 & keep\_conv1 & 87.40 & 57\% \\
+resnet18 & keep\_layer1 & 86.06 & 19\% \\
+resnet18 & keep\_layer4 & 85.30 & -3\% \\
+resnet18 & keep\_fc & 85.50 & 3\% \\
+resnet18 & FP32 baseline & 88.89 & 100\% \\
+\midrule
+resnet50 & Full BitNet & 86.23 & 0\% \\
+resnet50 & FP32 baseline & 90.42 & 100\% \\
+\bottomrule
+\end{tabular}
+\end{table}

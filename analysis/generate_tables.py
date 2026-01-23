@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from analysis.model_stats import get_model_stats
+from experiments.config import MODELS
 from experiments.datasets.factory import AUGMENT_CHOICES
 
 
@@ -128,9 +130,106 @@ def statistical_table(comparisons: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def save_tables(
-    df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tables"
-) -> None:
+def efficiency_table(input_size: tuple[int, int] = (32, 32)) -> str:
+    """Generate LaTeX table with model efficiency metrics (size, FLOPs, compression)."""
+    lines = [
+        r"\begin{table}[h]",
+        r"\centering",
+        r"\caption{Model efficiency: memory and computational cost}",
+        r"\label{tab:efficiency}",
+        r"\begin{tabular}{lrrrrrr}",
+        r"\toprule",
+        r"Model & Params & FP32 (MB) & BitNet (MB) & Compress & FLOPs & Speedup \\",
+        r"\midrule",
+    ]
+
+    for model_name in MODELS:
+        try:
+            stats = get_model_stats(model_name, num_classes=10, input_size=input_size)
+            compress = stats["fp32_mb"] / stats["bitnet_mb"]
+            lines.append(
+                f"{model_name} & {stats['params_str']} & {stats['fp32_mb']:.2f} & "
+                f"{stats['bitnet_mb']:.2f} & {compress:.1f}$\\times$ & "
+                f"{stats['flops_str']} & {stats['compute_reduction']:.0f}$\\times$ \\\\"
+            )
+        except Exception:
+            continue
+
+    lines.extend(
+        [
+            r"\bottomrule",
+            r"\multicolumn{7}{l}{\footnotesize Speedup assumes 64 ternary ops = 1 FP64 op} \\",
+            r"\end{tabular}",
+            r"\end{table}",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def layer_ablation_table(df: pd.DataFrame, dataset: str = "cifar10", augment: str = "basic") -> str:
+    """Generate LaTeX table showing layer-wise ablation results for a specific dataset."""
+    if "ablation" not in df.columns:
+        return "% No ablation data available"
+
+    # Filter by dataset and augmentation (ablation experiments use basic augment)
+    df = df[(df["dataset"] == dataset) & (df["augment"] == augment)]
+
+    # Filter to BitNet runs with ablation
+    ablation_df = df[(df["version"] == "bit") | (df["ablation"] != "none")]
+    if len(ablation_df) == 0:
+        return "% No ablation experiments found"
+
+    # Get FP32 baseline
+    fp32_df = df[(df["version"] == "std") & (df["ablation"] == "none")]
+
+    lines = [
+        r"\begin{table}[h]",
+        r"\centering",
+        rf"\caption{{Layer-wise ablation on {dataset.upper()}: accuracy when keeping specific layers in FP32}}",
+        rf"\label{{tab:layer_ablation_{dataset}}}",
+        r"\begin{tabular}{llcc}",
+        r"\toprule",
+        r"Model & Ablation & Accuracy (\%) & Gap Recovery \\",
+        r"\midrule",
+    ]
+
+    for model in ablation_df["model"].unique():
+        model_data = ablation_df[ablation_df["model"] == model]
+        fp32_acc = fp32_df[fp32_df["model"] == model]["best_acc"].mean()
+        bitnet_baseline = model_data[model_data["ablation"] == "none"]["best_acc"].mean()
+        total_gap = fp32_acc - bitnet_baseline if pd.notna(fp32_acc) else 0
+
+        for ablation in ["none", "keep_conv1", "keep_layer1", "keep_layer4", "keep_fc"]:
+            abl_data = model_data[model_data["ablation"] == ablation]
+            if len(abl_data) == 0:
+                continue
+
+            acc = abl_data["best_acc"].mean()
+            if ablation == "none":
+                recovery = "0\\%"
+                label = "Full BitNet"
+            else:
+                gap_recovered = acc - bitnet_baseline
+                recovery_pct = 100 * gap_recovered / total_gap if total_gap > 0 else 0
+                recovery = f"{recovery_pct:.0f}\\%"
+                label = ablation.replace("_", "\\_")
+
+            lines.append(f"{model} & {label} & {acc:.2f} & {recovery} \\\\")
+
+        # Add FP32 baseline row
+        if pd.notna(fp32_acc):
+            lines.append(f"{model} & FP32 baseline & {fp32_acc:.2f} & 100\\% \\\\")
+        lines.append(r"\midrule")
+
+    # Remove last midrule
+    if lines[-1] == r"\midrule":
+        lines.pop()
+
+    lines.extend([r"\bottomrule", r"\end{tabular}", r"\end{table}"])
+    return "\n".join(lines)
+
+
+def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tables") -> None:
     """Save all tables to files."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -139,6 +238,8 @@ def save_tables(
     (output / "accuracy_full.tex").write_text(accuracy_table(df, augment="full"))
     (output / "augmentation_ablation.tex").write_text(augmentation_ablation_table(df))
     (output / "statistics.tex").write_text(statistical_table(comparisons))
+    (output / "efficiency.tex").write_text(efficiency_table())
+    (output / "layer_ablation.tex").write_text(layer_ablation_table(df, dataset="cifar10"))
     print(f"Tables saved to {output}")
 
 

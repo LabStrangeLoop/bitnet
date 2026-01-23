@@ -29,6 +29,7 @@ def load_results(results_dir: str = "results/raw") -> pd.DataFrame:
                 "bit_version": config.get("bit_version", False),
                 "version": "bit" if config.get("bit_version") else "std",
                 "augment": config.get("augment", "basic"),
+                "ablation": config.get("ablation", "none"),
                 "best_acc": data.get("best_acc"),
                 "final_test_acc": data.get("final_test_acc"),
                 "epochs": config.get("epochs"),
@@ -71,9 +72,7 @@ def compute_accuracy_gap(df: pd.DataFrame) -> pd.DataFrame:
     return gap
 
 
-def save_aggregated(
-    df: pd.DataFrame, output_path: str = "results/processed/aggregated.csv"
-) -> None:
+def save_aggregated(df: pd.DataFrame, output_path: str = "results/processed/aggregated.csv") -> None:
     """Save aggregated results to CSV."""
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
