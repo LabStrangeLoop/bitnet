@@ -39,6 +39,8 @@ def run_experiment(
     index: int,
     total: int,
     dry_run: bool = False,
+    optimizer: str = "sgd",
+    lr: float | None = None,
 ) -> str:
     """Run a single experiment. Returns 'completed', 'skipped', or 'failed'."""
     version: Version = config["version"]
@@ -73,8 +75,12 @@ def run_experiment(
         config["augment"],
         "--ablation",
         ablation.value,
+        "--optimizer",
+        optimizer,
         "--quiet",
     ]
+    if lr is not None:
+        cmd.extend(["--lr", str(lr)])
     if version == Version.BIT:
         cmd.append("--bit-version")
 
@@ -135,6 +141,8 @@ def main() -> None:
     parser.add_argument("--seeds", nargs="+", type=int, default=SEEDS)
     parser.add_argument("--augments", nargs="+", default=["basic"], choices=AUGMENT_CHOICES)
     parser.add_argument("--ablations", nargs="+", default=["none"], choices=ablation_choices)
+    parser.add_argument("--optimizer", default="sgd", choices=["sgd", "adamw"])
+    parser.add_argument("--lr", type=float, default=None, help="Learning rate (default: 0.1 for SGD, 0.001 for AdamW)")
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running")
     args = parser.parse_args()
 
@@ -155,12 +163,18 @@ def main() -> None:
     print(f"Datasets: {args.datasets}")
     print(f"Augments: {args.augments}")
     print(f"Ablations: {args.ablations}")
+    print(f"Optimizer: {args.optimizer}")
     print(f"Seeds: {args.seeds}")
     print(f"Epochs: {args.epochs}")
     print()
 
+    # Set default LR based on optimizer if not specified
+    lr = args.lr
+    if lr is None and args.optimizer == "adamw":
+        lr = 0.001  # AdamW default
+
     for i, config in enumerate(configs, 1):
-        result = run_experiment(config, args.output_dir, args.epochs, i, total, args.dry_run)
+        result = run_experiment(config, args.output_dir, args.epochs, i, total, args.dry_run, args.optimizer, lr)
         _sweep_state[result] += 1
 
     print_summary()
