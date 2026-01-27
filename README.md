@@ -77,6 +77,12 @@ uv run python -m experiments.sweep --models resnet18 resnet50 --datasets cifar10
 # With different augmentation levels
 uv run python -m experiments.sweep --augments basic randaug cutout full
 
+# With different optimizer (AdamW instead of default SGD)
+uv run python -m experiments.sweep --optimizer adamw --output-dir results/raw_adamw
+
+# Longer training (400 epochs instead of 200)
+uv run python -m experiments.sweep --epochs 400 --output-dir results/raw_400ep
+
 # Ctrl+C shows summary of completed/skipped/failed experiments
 ```
 
