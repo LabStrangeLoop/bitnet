@@ -20,14 +20,25 @@ def load_results(results_dir: str = "results/raw") -> pd.DataFrame:
         with open(results_file) as f:
             data = json.load(f)
 
+        # Config may be embedded in results.json or in separate config.json
         config = data.get("config", {})
+        if not config:
+            config_file = results_file.parent / "config.json"
+            if config_file.exists():
+                with open(config_file) as f:
+                    config = json.load(f)
+        # Handle both old format (bit_version: bool) and new format (version: str)
+        if "version" in config:
+            version = config["version"]
+        else:
+            version = "bit" if config.get("bit_version") else "std"
         rows.append(
             {
                 "model": config.get("model"),
                 "dataset": config.get("dataset"),
                 "seed": config.get("seed"),
-                "bit_version": config.get("bit_version", False),
-                "version": "bit" if config.get("bit_version") else "std",
+                "bit_version": version == "bit",
+                "version": version,
                 "augment": config.get("augment", "basic"),
                 "ablation": config.get("ablation", "none"),
                 "best_acc": data.get("best_acc"),
