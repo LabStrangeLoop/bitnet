@@ -55,6 +55,7 @@ class TrainConfig:
     batch_size: int = 128
     lr: float = 0.1
     weight_decay: float = 5e-4
+    optimizer: str = "sgd"
     scheduler: str = "cosine"
     warmup_epochs: int = 0
     augment: str = "basic"

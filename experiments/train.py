@@ -82,13 +82,21 @@ def train(config: TrainConfig) -> dict:
 
     # Training setup
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(
-        model.parameters(),
-        lr=config.lr,
-        momentum=0.9,
-        weight_decay=config.weight_decay,
-        nesterov=True,
-    )
+    optimizer: optim.AdamW | optim.SGD
+    if config.optimizer == "adamw":
+        optimizer = optim.AdamW(
+            model.parameters(),
+            lr=config.lr,
+            weight_decay=config.weight_decay,
+        )
+    else:  # Default to SGD
+        optimizer = optim.SGD(
+            model.parameters(),
+            lr=config.lr,
+            momentum=0.9,
+            weight_decay=config.weight_decay,
+            nesterov=True,
+        )
     scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs)
     config_dict = dataclasses.asdict(config)
     config_dict["version"] = config.version.value  # Serialize enum
@@ -155,6 +163,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=DEFAULTS.batch_size)
     parser.add_argument("--lr", type=float, default=DEFAULTS.lr)
     parser.add_argument("--weight-decay", type=float, default=DEFAULTS.weight_decay)
+    parser.add_argument("--optimizer", default="sgd", choices=["sgd", "adamw"])
     parser.add_argument("--scheduler", default=DEFAULTS.scheduler, choices=["cosine", "step", "none"])
     parser.add_argument("--warmup-epochs", type=int, default=0)
     parser.add_argument("--augment", default="basic", choices=AUGMENT_CHOICES)
@@ -176,6 +185,7 @@ def main() -> None:
         batch_size=args.batch_size,
         lr=args.lr,
         weight_decay=args.weight_decay,
+        optimizer=args.optimizer,
         scheduler=args.scheduler,
         warmup_epochs=args.warmup_epochs,
         augment=args.augment,
