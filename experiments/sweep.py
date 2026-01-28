@@ -77,6 +77,8 @@ def run_experiment(
         ablation.value,
         "--optimizer",
         optimizer,
+        "--output-dir",
+        output_dir,
         "--quiet",
     ]
     if lr is not None:
