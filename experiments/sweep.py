@@ -78,7 +78,7 @@ def run_experiment(
         "--optimizer",
         optimizer,
         "--output-dir",
-        output_dir,
+        str(run_dir),  # Pass full run-specific path, not base directory
         "--quiet",
     ]
     if lr is not None:
