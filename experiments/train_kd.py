@@ -96,9 +96,16 @@ def train_epoch_kd(
 
 
 def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha: float) -> dict:
+    output_dir = Path(config.output_dir)
+    results_path = output_dir / "results.json"
+
+    # Skip if already completed
+    if results_path.exists():
+        log.warning("Skipping %s (already completed)", output_dir)
+        return json.loads(results_path.read_text())
+
     set_seed(config.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logging_config.setup(output_dir, resume=checkpoint.exists(output_dir), quiet=config.quiet)
