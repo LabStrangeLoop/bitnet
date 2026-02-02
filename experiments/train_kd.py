@@ -16,6 +16,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
 from experiments.config import (
+    ABLATION_SKIP_LAYERS,
     DATASET_NUM_CLASSES,
     DEFAULTS,
     AblationMode,
@@ -132,11 +133,15 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
     teacher = load_teacher(config.model, num_classes, teacher_path, device)
     log.info("Teacher loaded from: %s", teacher_path)
 
-    student = get_model(config.model, num_classes, bit_version=True, pretrained=False)
+    skip_layers = ABLATION_SKIP_LAYERS.get(config.ablation, set())
+    student = get_model(config.model, num_classes, bit_version=True, pretrained=False, skip_layers=skip_layers)
     if torch.cuda.device_count() > 1:
         student = nn.DataParallel(student)
     student = student.to(device)
-    log.info("Student: %s (bit)", config.model)
+    if config.ablation != AblationMode.NONE:
+        log.info("Student: %s (bit, ablation=%s)", config.model, config.ablation.value)
+    else:
+        log.info("Student: %s (bit)", config.model)
 
     # Training setup
     criterion = KDLoss(temperature=temperature, alpha=alpha)
@@ -235,7 +240,8 @@ def main() -> None:
 
     # Auto-generate output dir if not specified
     if not args.output_dir:
-        args.output_dir = f"results/raw_kd/{args.dataset}/{args.model}/bit_kd_s{args.seed}"
+        abl_suffix = f"_{args.ablation}" if args.ablation != "none" else ""
+        args.output_dir = f"results/raw_kd/{args.dataset}/{args.model}/bit_kd{abl_suffix}_s{args.seed}"
 
     config = TrainConfig(
         model=args.model,
