@@ -40,6 +40,8 @@ def load_results(results_dirs: str | list[str] = "results/raw") -> pd.DataFrame:
                 version = config["version"]
             else:
                 version = "bit" if config.get("bit_version") else "std"
+            # Extract KD config if present
+            kd_config = config.get("kd", {})
             rows.append(
                 {
                     "model": config.get("model"),
@@ -55,6 +57,10 @@ def load_results(results_dirs: str | list[str] = "results/raw") -> pd.DataFrame:
                     "epochs": config.get("epochs"),
                     "lr": config.get("lr"),
                     "run_dir": str(results_file.parent),
+                    # KD-specific fields
+                    "kd_temperature": kd_config.get("temperature"),
+                    "kd_alpha": kd_config.get("alpha"),
+                    "kd_teacher": kd_config.get("teacher_path"),
                 }
             )
 
