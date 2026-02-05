@@ -25,6 +25,7 @@ from experiments.config import (
 )
 from experiments.datasets.factory import AUGMENT_CHOICES, get_dataset
 from experiments.models.factory import get_model
+from experiments.paths import ExperimentType, check_safe_to_run, get_experiment_dir
 from experiments.training import checkpoint, logging_config
 from experiments.training.kd_loss import KDLoss
 from experiments.training.loops import evaluate, get_scheduler
@@ -236,12 +237,24 @@ def main() -> None:
     parser.add_argument("--output-dir", default="")
     parser.add_argument("--tensorboard", action="store_true", default=True)
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing results")
     args = parser.parse_args()
 
     # Auto-generate output dir if not specified
     if not args.output_dir:
-        abl_suffix = f"_{args.ablation}" if args.ablation != "none" else ""
-        args.output_dir = f"results/raw_kd/{args.dataset}/{args.model}/bit_kd{abl_suffix}_s{args.seed}"
+        experiment_dir = get_experiment_dir(
+            ExperimentType.KD,
+            args.dataset,
+            args.model,
+            args.seed,
+            ablation=args.ablation,
+            kd_temperature=args.temperature,
+            kd_alpha=args.alpha,
+        )
+        args.output_dir = str(experiment_dir)
+
+    # Safety check: prevent accidental overwrites
+    check_safe_to_run(Path(args.output_dir), force=args.force)
 
     config = TrainConfig(
         model=args.model,

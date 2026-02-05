@@ -26,6 +26,7 @@ from experiments.config import (
 )
 from experiments.datasets.factory import AUGMENT_CHOICES, get_dataset
 from experiments.models.factory import get_model
+from experiments.paths import check_safe_to_run
 from experiments.training import checkpoint, logging_config
 from experiments.training.loops import evaluate, get_scheduler, train_epoch
 
@@ -173,6 +174,7 @@ def main() -> None:
     parser.add_argument("--output-dir", default="")  # Empty = auto-generate
     parser.add_argument("--tensorboard", action="store_true", default=True)
     parser.add_argument("--quiet", action="store_true", help="Suppress progress bars")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing results")
     args = parser.parse_args()
 
     config = TrainConfig(
@@ -196,6 +198,10 @@ def main() -> None:
         tensorboard=args.tensorboard,
         quiet=args.quiet,
     )
+
+    # Safety check: prevent accidental overwrites
+    check_safe_to_run(Path(config.output_dir), force=args.force)
+
     train(config)
 
 

@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .paths import ExperimentType, get_experiment_dir
+
 
 class Version(Enum):
     """Model version: standard (FP32) or bit-quantized (1.58-bit)."""
@@ -69,10 +71,16 @@ class TrainConfig:
     def __post_init__(self) -> None:
         """Set output_dir if not provided."""
         if not self.output_dir:
-            aug_suffix = f"_{self.augment}" if self.augment != "basic" else ""
-            abl_suffix = f"_{self.ablation.value}" if self.ablation != AblationMode.NONE else ""
-            run_name = f"{self.version.value}{aug_suffix}{abl_suffix}_s{self.seed}"
-            self.output_dir = f"results/raw/{self.dataset}/{self.model}/{run_name}"
+            experiment_dir = get_experiment_dir(
+                ExperimentType.STANDARD,
+                self.dataset,
+                self.model,
+                self.seed,
+                version=self.version.value,
+                augment=self.augment,
+                ablation=self.ablation.value,
+            )
+            self.output_dir = str(experiment_dir)
 
 
 # Convenience: default values for argparse (frozen to prevent modification)
