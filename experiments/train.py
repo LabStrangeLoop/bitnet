@@ -26,7 +26,7 @@ from experiments.config import (
 )
 from experiments.datasets.factory import AUGMENT_CHOICES, get_dataset
 from experiments.models.factory import get_model
-from experiments.paths import check_safe_to_run
+from experiments.paths import should_skip_experiment
 from experiments.training import checkpoint, logging_config
 from experiments.training.loops import evaluate, get_scheduler, train_epoch
 
@@ -199,8 +199,9 @@ def main() -> None:
         quiet=args.quiet,
     )
 
-    # Safety check: prevent accidental overwrites
-    check_safe_to_run(Path(config.output_dir), force=args.force)
+    # Skip if experiment already exists (unless --force)
+    if should_skip_experiment(Path(config.output_dir), force=args.force):
+        return
 
     train(config)
 

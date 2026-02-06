@@ -85,18 +85,18 @@ def experiment_exists(experiment_dir: Path) -> bool:
     return (experiment_dir / "results.json").exists()
 
 
-def check_safe_to_run(experiment_dir: Path, *, force: bool = False) -> None:
-    """Check if it's safe to run an experiment.
+def should_skip_experiment(experiment_dir: Path, *, force: bool = False) -> bool:
+    """Check if an experiment should be skipped.
 
     Args:
         experiment_dir: Path to experiment directory.
         force: If True, allow overwriting existing results.
 
-    Raises:
-        FileExistsError: If experiment exists and force is False.
+    Returns:
+        True if the experiment should be skipped (already exists and not forcing).
     """
     if experiment_exists(experiment_dir) and not force:
-        raise FileExistsError(
-            f"Experiment already exists: {experiment_dir}\n"
-            f"Use --force to overwrite, or check if this is a duplicate run."
-        )
+        print(f"\n[SKIP] Experiment already exists: {experiment_dir}")
+        print("       Use --force to overwrite.\n")
+        return True
+    return False
