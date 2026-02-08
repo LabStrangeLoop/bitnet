@@ -25,10 +25,14 @@ class AblationMode(Enum):
     - conv1: First convolutional layer (stem)
     - layer1-4: Residual block groups
     - fc: Final classifier layer
+
+    For MobileNet/EfficientNet architectures:
+    - conv_stem: First convolutional layer
     """
 
     NONE = "none"  # Full BitNet (all layers quantized)
-    KEEP_CONV1 = "keep_conv1"  # Keep first conv in FP32
+    KEEP_CONV1 = "keep_conv1"  # Keep first conv in FP32 (ResNet)
+    KEEP_CONV_STEM = "keep_conv_stem"  # Keep first conv in FP32 (MobileNet/EfficientNet)
     KEEP_LAYER1 = "keep_layer1"  # Keep first residual block in FP32
     KEEP_LAYER4 = "keep_layer4"  # Keep last residual block in FP32
     KEEP_FC = "keep_fc"  # Keep classifier in FP32
@@ -38,6 +42,7 @@ class AblationMode(Enum):
 ABLATION_SKIP_LAYERS: dict[AblationMode, set[str]] = {
     AblationMode.NONE: set(),
     AblationMode.KEEP_CONV1: {"conv1"},
+    AblationMode.KEEP_CONV_STEM: {"conv_stem"},
     AblationMode.KEEP_LAYER1: {"layer1"},
     AblationMode.KEEP_LAYER4: {"layer4"},
     AblationMode.KEEP_FC: {"fc", "head", "classifier"},  # Different model naming
