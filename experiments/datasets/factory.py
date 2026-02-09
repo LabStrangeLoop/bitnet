@@ -88,6 +88,39 @@ def get_imagenet_eval_transform(image_size: int = 224) -> transforms.Compose:
     )
 
 
+def get_tiny_imagenet_train_transform(augment: str = "basic") -> transforms.Compose:
+    """Get Tiny ImageNet (64x64) training transform."""
+    base = [
+        transforms.RandomCrop(64, padding=8),
+        transforms.RandomHorizontalFlip(),
+    ]
+
+    if augment in ("randaug", "full"):
+        base.insert(0, transforms.RandAugment(num_ops=2, magnitude=9))
+
+    base.extend(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
+
+    if augment in ("cutout", "full"):
+        base.append(transforms.RandomErasing(p=0.5, scale=(0.02, 0.33)))
+
+    return transforms.Compose(base)
+
+
+def get_tiny_imagenet_eval_transform() -> transforms.Compose:
+    """Get Tiny ImageNet eval transform (no resize needed, already 64x64)."""
+    return transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
+
+
 class HFImageNetDataset(Dataset):
     """ImageNet dataset wrapper for HuggingFace datasets."""
 
@@ -107,11 +140,43 @@ class HFImageNetDataset(Dataset):
         return image, label
 
 
+def _reorganize_tiny_imagenet_val(val_dir: str) -> None:
+    """Reorganize Tiny ImageNet val set into class folders (run once)."""
+    import shutil
+    from pathlib import Path
+
+    val_path = Path(val_dir)
+    annotations_file = val_path / "val_annotations.txt"
+
+    # Check if already reorganized (class folders exist)
+    if not annotations_file.exists():
+        return
+
+    # Read annotations and move images to class folders
+    with open(annotations_file) as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            img_name, class_id = parts[0], parts[1]
+            class_dir = val_path / class_id
+            class_dir.mkdir(exist_ok=True)
+
+            src = val_path / "images" / img_name
+            dst = class_dir / img_name
+            if src.exists():
+                shutil.move(str(src), str(dst))
+
+    # Clean up
+    images_dir = val_path / "images"
+    if images_dir.exists() and not list(images_dir.iterdir()):
+        images_dir.rmdir()
+    annotations_file.unlink(missing_ok=True)
+
+
 def get_dataset(name: str, split: str, root: str = "./data", augment: str = "basic") -> Dataset:
     """Load dataset with specified augmentation level.
 
     Args:
-        name: Dataset name (cifar10, cifar100, imagenet)
+        name: Dataset name (cifar10, cifar100, imagenet, tiny_imagenet)
         split: train or test
         root: Data directory
         augment: Augmentation level (basic, randaug, cutout, full)
@@ -122,6 +187,20 @@ def get_dataset(name: str, split: str, root: str = "./data", augment: str = "bas
         transform = get_cifar_train_transform(augment) if is_train else get_cifar_eval_transform()
         dataset_cls = tv_datasets.CIFAR10 if name == "cifar10" else tv_datasets.CIFAR100
         return dataset_cls(root, train=is_train, transform=transform, download=True)  # type: ignore[no-any-return]
+
+    if name == "tiny_imagenet":
+        from pathlib import Path
+
+        tiny_root = Path(root) / "tiny-imagenet-200"
+        if is_train:
+            transform = get_tiny_imagenet_train_transform(augment)
+            data_dir = tiny_root / "train"
+        else:
+            transform = get_tiny_imagenet_eval_transform()
+            val_dir = tiny_root / "val"
+            _reorganize_tiny_imagenet_val(str(val_dir))
+            data_dir = val_dir
+        return tv_datasets.ImageFolder(str(data_dir), transform=transform)  # type: ignore[no-any-return]
 
     if name == "imagenet":
         if is_train:

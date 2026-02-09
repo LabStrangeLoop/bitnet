@@ -135,5 +135,5 @@ DATASETS = ["cifar10", "cifar100", "imagenet"]
 SEEDS = [42, 123, 456]
 
 # Dataset-specific settings
-DATASET_NUM_CLASSES = {"cifar10": 10, "cifar100": 100, "imagenet": 1000}
-DATASET_EPOCHS = {"cifar10": 200, "cifar100": 200, "imagenet": 90}
+DATASET_NUM_CLASSES = {"cifar10": 10, "cifar100": 100, "tiny_imagenet": 200, "imagenet": 1000}
+DATASET_EPOCHS = {"cifar10": 200, "cifar100": 200, "tiny_imagenet": 200, "imagenet": 90}
