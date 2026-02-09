@@ -248,6 +248,7 @@ def main() -> None:
             args.model,
             args.seed,
             ablation=args.ablation,
+            lr=args.lr,
             kd_temperature=args.temperature,
             kd_alpha=args.alpha,
         )

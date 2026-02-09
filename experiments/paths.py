@@ -17,6 +17,15 @@ class ExperimentType(Enum):
 
 
 @dataclass(frozen=True)
+class TrainingDefaults:
+    """Default values for training hyperparameters that affect path naming."""
+
+    lr: float = 0.1
+    augment: str = "basic"
+    ablation: str = "none"
+
+
+@dataclass(frozen=True)
 class KDDefaults:
     """Default values for knowledge distillation hyperparameters."""
 
@@ -24,6 +33,7 @@ class KDDefaults:
     alpha: float = 0.9
 
 
+TRAINING_DEFAULTS = TrainingDefaults()
 KD_DEFAULTS = KDDefaults()
 
 
@@ -34,8 +44,9 @@ def get_experiment_dir(
     seed: int,
     *,
     version: str = "bit",
-    augment: str = "basic",
-    ablation: str = "none",
+    augment: str = TRAINING_DEFAULTS.augment,
+    ablation: str = TRAINING_DEFAULTS.ablation,
+    lr: float = TRAINING_DEFAULTS.lr,
     kd_temperature: float | None = None,
     kd_alpha: float | None = None,
 ) -> Path:
@@ -51,6 +62,7 @@ def get_experiment_dir(
         version: Model version (std or bit).
         augment: Augmentation strategy (basic, cutout, randaug, full).
         ablation: Ablation mode (none, keep_conv1, keep_layer1, etc.).
+        lr: Learning rate (included in path if non-default).
         kd_temperature: KD temperature (only for KD experiments).
         kd_alpha: KD alpha (only for KD experiments).
 
@@ -62,14 +74,18 @@ def get_experiment_dir(
 
     if experiment_type == ExperimentType.STANDARD:
         parts.append(version)
-        if augment != "basic":
+        if augment != TRAINING_DEFAULTS.augment:
             parts.append(augment)
-        if ablation != "none":
+        if ablation != TRAINING_DEFAULTS.ablation:
             parts.append(ablation)
+        if lr != TRAINING_DEFAULTS.lr:
+            parts.append(f"lr{lr:g}")
     else:
         parts.append("bit_kd")
-        if ablation != "none":
+        if ablation != TRAINING_DEFAULTS.ablation:
             parts.append(ablation)
+        if lr != TRAINING_DEFAULTS.lr:
+            parts.append(f"lr{lr:g}")
         if kd_temperature is not None and kd_temperature != KD_DEFAULTS.temperature:
             parts.append(f"t{kd_temperature:g}")
         if kd_alpha is not None and kd_alpha != KD_DEFAULTS.alpha:
