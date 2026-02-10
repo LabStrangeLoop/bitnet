@@ -6,7 +6,7 @@
 %   - For conference: replace documentclass and add style file
 %   - Common targets: NeurIPS, ICML, CVPR, ICLR, AAAI
 
-\documentclass[11pt]{article}
+\documentclass[10pt]{article}
 
 % =============================================================================
 % CONFERENCE ADAPTATION
@@ -26,6 +26,9 @@
 % \usepackage{iclr2024_conference}
 %
 % =============================================================================
+
+% Page geometry - moderate compression for preprint
+\usepackage[margin=1in, top=0.9in, bottom=0.9in]{geometry}
 
 % Core packages
 \usepackage[utf8]{inputenc}
@@ -103,7 +106,7 @@
 % =============================================================================
 
 \begin{abstract}
-Deploying neural networks on edge devices demands extreme compression, yet ternary quantization (1.58-bit weights) typically incurs a 3--4\% accuracy gap versus full-precision models. We investigate whether data augmentation---a standard technique for improving generalization---can close this gap. Surprisingly, it cannot: the gap remains approximately 3.5\% regardless of augmentation strategy. Through layer-wise ablation, we identify the first convolutional layer as responsible for 54--74\% of the accuracy loss across configurations. Combining a simple fix (keeping \texttt{conv1} in FP32, adding only 0.08\% parameters) with knowledge distillation, we recover 88\% of the accuracy gap, achieving 88.48\% on CIFAR-10 versus 88.89\% for FP32. Our recipe enables practical ternary CNN deployment with near-full-precision accuracy while preserving $20\times$ compression.
+Deploying neural networks on edge devices demands extreme compression, yet ternary quantization (1.58-bit weights) typically incurs a 3--4\% accuracy gap versus full-precision models. We investigate whether data augmentation---a standard technique for improving generalization---can close this gap. Surprisingly, it cannot: the gap remains approximately 3.5\% regardless of augmentation strategy. Through layer-wise ablation, we identify the first convolutional layer as responsible for 54--74\% of the accuracy loss across configurations. Combining a simple fix (keeping \texttt{conv1} in FP32, adding only 0.08\% parameters) with knowledge distillation, we recover 88\% of the accuracy gap on CIFAR-10 and \emph{exceed FP32 accuracy} on harder tasks: +1.0\% on CIFAR-100 (100 classes) and +1.3\% on Tiny ImageNet (200 classes). Our recipe enables practical ternary CNN deployment with near-full-precision---or better---accuracy while preserving $20\times$ compression.
 \end{abstract}
 
 % =============================================================================
@@ -125,14 +128,14 @@ The result is surprising: \emph{augmentation does not close the gap}. Whether we
 
 Why \texttt{conv1}? The first layer processes raw pixel values, where subtle intensity gradients carry critical information. Ternary weights, restricted to three values, cannot capture these fine-grained patterns. Deeper layers operate on increasingly abstract features that tolerate coarse quantization. This validates the long-standing convention with empirical rigor.
 
-\textbf{A practical recipe.} Building on this insight, we combine the \texttt{conv1} fix with knowledge distillation from an FP32 teacher. The effects are largely additive: \texttt{conv1} alone recovers 58\%, KD alone recovers 36\%, and together they recover 88\% of the gap on CIFAR-10. Remarkably, on the harder CIFAR-100 task, this recipe \emph{exceeds FP32 accuracy}---achieving 63.40\% vs 62.40\% baseline---demonstrating that KD's regularization can push ternary networks beyond full-precision performance.
+\textbf{A practical recipe.} Building on this insight, we combine the \texttt{conv1} fix with knowledge distillation from an FP32 teacher. The effects are largely additive: \texttt{conv1} alone recovers 58\%, KD alone recovers 36\%, and together they recover 88\% of the gap on CIFAR-10. Remarkably, on harder tasks, this recipe \emph{exceeds FP32 accuracy}: +1.0\% on CIFAR-100 (100 classes) and +1.3\% on Tiny ImageNet (200 classes, 64$\times$64 resolution). This demonstrates that KD's regularization can push ternary networks beyond full-precision performance, with the effect strengthening as task complexity increases.
 
 \textbf{Contributions.}
 \begin{enumerate}
     \item \textbf{The augmentation paradox}: We demonstrate that data augmentation fails to close the ternary-FP32 accuracy gap, ruling out regularization as a solution.
     \item \textbf{Quantified layer sensitivity}: While keeping early layers in FP32 is established practice, we provide the first precise quantification: \texttt{conv1} accounts for 54--74\% of accuracy loss with only 0.08\% of parameters.
-    \item \textbf{A practical recipe}: We show that keeping \texttt{conv1} in FP32 combined with knowledge distillation recovers 88\% of the accuracy gap on CIFAR-10 and \emph{exceeds FP32 accuracy} on CIFAR-100---validating a simple mixed-precision strategy without expensive architecture search.
-    \item \textbf{Systematic evidence}: We provide 149 experiments across architectures, datasets, and configurations with statistical analysis, using standard ResNet architectures (vs. custom small models in prior work).
+    \item \textbf{A practical recipe}: We show that keeping \texttt{conv1} in FP32 combined with knowledge distillation recovers 88\% of the accuracy gap on CIFAR-10 and \emph{exceeds FP32 accuracy} on harder tasks (CIFAR-100, Tiny ImageNet)---validating a simple mixed-precision strategy without expensive architecture search.
+    \item \textbf{Fully reproducible}: We release a complete code-to-paper pipeline where a single command regenerates all experiments, tables, figures, and this document from raw data. All 195+ experiments are deterministic and verifiable.
 \end{enumerate}
 
 % =============================================================================
@@ -149,7 +152,7 @@ BinaryConnect~\cite{courbariaux2015binaryconnect} pioneered binary weight traini
 BitNet~\cite{wang2023bitnet} introduced 1-bit quantization for transformers, and \bitnetb{}~\cite{ma2024bitnetb158} refined this to ternary weights, matching FP16 LLM performance with $20\times$ compression. For vision, Nielsen and Schneider-Kamp~\cite{nielsen2024bitnetreloaded} applied \bitnetb{} to small custom CNNs (100K--2.2M parameters) trained for only 10 epochs, achieving 71.47\% on CIFAR-10. Concurrently, BD-Net~\cite{kim2025bdnet} applied 1.58-bit quantization to MobileNet's depthwise convolutions. However, no prior work has systematically studied \bitnetb{} on standard architectures (ResNet) with full training schedules, nor explored the interaction between data augmentation and ternary quantization.
 
 \textbf{Knowledge Distillation for Quantization.}
-Hinton et al.~\cite{hinton2015distilling} introduced knowledge distillation via soft labels. For quantized models, QKD~\cite{kim2019qkd} showed distillation helps binary networks. Recent work suggests feature-level distillation (matching intermediate activations) can provide 5--20\% additional improvement over logit-only KD for extremely quantized networks~\cite{elthakeb2020dcq}. We use vanilla soft-label distillation ($T=4$, $\alpha=0.9$), leaving feature distillation as promising future work.
+Hinton et al.~\cite{hinton2015distilling} introduced knowledge distillation via soft labels. For quantized models, QKD~\cite{kim2019qkd} showed distillation helps binary networks. Recent work suggests feature-level distillation (matching intermediate activations) can provide 5--20\% additional improvement over logit-only KD for extremely quantized networks~\cite{elthakeb2020dcq}. We use soft-label distillation with task-specific hyperparameters ($T=5$, $\alpha=0.7$ for CIFAR-10; $T=6$, $\alpha=0.5$ for CIFAR-100), leaving feature distillation as promising future work.
 
 \textbf{Layer-wise Quantization Sensitivity.}
 Keeping first and last layers at higher precision has been standard practice since XNOR-Net~\cite{rastegari2016xnornet} and DoReFa-Net~\cite{zhou2016dorefa}, motivated by error propagation concerns and the observation that these layers ``constitute a very small portion of overall computation.'' Mixed-precision approaches like HAQ~\cite{wang2019haq} and HAWQ~\cite{dong2019hawq} learn per-layer bit-widths via reinforcement learning or Hessian analysis. While keeping \texttt{conv1} in FP32 is established practice, we provide the first \emph{precise quantification} for ternary CNNs: \texttt{conv1} accounts for 54--74\% of accuracy degradation despite comprising only 0.08\% of parameters. This validates the convention with empirical rigor and motivates a simple mixed-precision strategy without expensive search.
@@ -195,7 +198,7 @@ All models are trained from scratch with:
     \item Optimizer: SGD with momentum 0.9 and Nesterov acceleration
     \item Learning rate: 0.1 with cosine annealing
     \item Weight decay: $5 \times 10^{-4}$
-    \item Epochs: 200 (CIFAR), 90 (ImageNet)
+    \item Epochs: 200
     \item Batch size: 128
 \end{itemize}
 
@@ -246,8 +249,8 @@ The results are striking: \textbf{the accuracy gap remains constant at approxima
 
 \begin{figure}[ht]
 \centering
-\includefigureifexists{figures/augmentation_gap.pdf}{width=0.8\linewidth}
-\caption{Accuracy gap between FP32 and BitNet across augmentation levels. Despite increasing augmentation intensity, the gap remains flat at $\sim$3.5\%.}
+\includegraphics[width=\linewidth]{figures/augmentation_paradox.pdf}
+\caption{\textbf{The Augmentation Paradox.} Left: Both FP32 and BitNet improve with stronger augmentation. Right: The accuracy gap remains constant at $\sim$3.5\% regardless of strategy, ruling out regularization as a solution.}
 \label{fig:augmentation_gap}
 \end{figure}
 
@@ -302,6 +305,13 @@ FP32 (target)          & 88.89 & 100\% & 100\% \\
 
 The results reveal a striking asymmetry: \textbf{\texttt{conv1} accounts for 54--74\% of the accuracy gap across all configurations}, despite comprising only 0.08\% of parameters. In contrast, keeping the entire final residual block (\texttt{layer4}, 45\% of parameters) provides no benefit---and even slightly hurts performance on CIFAR-100.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/layer_ablation.pdf}
+\caption{\textbf{Layer-wise ablation on ResNet-18/CIFAR-10.} The first convolutional layer accounts for 58\% of the accuracy gap despite comprising only 0.08\% of parameters. Later layers provide minimal benefit.}
+\label{fig:layer_ablation}
+\end{figure}
+
 \textbf{Why \texttt{conv1}?} The first convolutional layer processes raw pixel intensities, where subtle gradients encode critical visual information. Ternary weights, restricted to $\{-1, 0, +1\}$, cannot capture these fine-grained patterns. Deeper layers operate on increasingly abstract, discrete-like features (edges, textures, parts) that tolerate coarse quantization.
 
 \subsection{Knowledge Distillation: Learning Soft Labels}
@@ -352,6 +362,13 @@ BitNet + keep\_conv1 & 87.40 & 58\% \\
 
 \textbf{Final result (CIFAR-10)}: 88.48\% accuracy, only 0.41\% below FP32, while maintaining 19.9$\times$ compression (vs 20.3$\times$ for full BitNet). The 0.08\% parameter overhead for \texttt{conv1} is negligible.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/recipe_progression.pdf}
+\caption{\textbf{Recipe progression across datasets.} The combination of keeping \texttt{conv1} in FP32 and knowledge distillation recovers 88\% of the gap on CIFAR-10 and \emph{exceeds FP32} on harder tasks (CIFAR-100: +1.0\%, Tiny ImageNet: +1.3\%).}
+\label{fig:recipe_progression}
+\end{figure}
+
 \textbf{CIFAR-100 Results.} On the harder 100-class task, the recipe performs even better. Table~\ref{tab:recipe_cifar100} shows that combining \texttt{conv1} with KD achieves \textbf{63.40\% accuracy---exceeding the FP32 baseline (62.40\%) by 1.0 percentage point}. This represents 123\% ``gap recovery,'' demonstrating that KD's regularization effect can push ternary networks \emph{beyond} full-precision accuracy on challenging tasks.
 
 \begin{table}[h]
@@ -371,6 +388,35 @@ BitNet + keep\_conv1 & 61.27 & $-1.13$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Scale Validation: Tiny ImageNet}
+
+To validate that our recipe generalizes beyond CIFAR, we evaluate on Tiny ImageNet~\cite{le2015tinyimagenet}: 200 classes at 64$\times$64 resolution, representing a significantly harder task than CIFAR-100.
+
+\begin{table}[ht]
+\centering
+\caption{Tiny ImageNet results (ResNet-18). The recipe \textbf{exceeds FP32 by 1.3 percentage points}, confirming the pattern observed on CIFAR-100.}
+\label{tab:tinyimagenet}
+\begin{tabular}{lcc}
+\toprule
+Method & Accuracy (\%) & vs FP32 \\
+\midrule
+FP32 (baseline) & 54.85 $\pm$ 0.16 & --- \\
+\midrule
+BitNet & 49.04 $\pm$ 0.19 & $-5.81$ \\
+\textbf{BitNet + conv1 + KD} & \textbf{56.15} & \textbf{+1.30} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The 5.81\% baseline gap is larger than CIFAR (3.5--4.3\%), confirming that the gap grows with task complexity. Critically, the recipe achieves 122\% gap recovery, exceeding FP32 by 1.3 percentage points. This confirms a key pattern: \emph{the harder the task, the more KD regularization benefits ternary networks}---pushing them beyond full-precision accuracy.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/recipe_vs_fp32.pdf}
+\caption{\textbf{Recipe exceeds FP32 on harder tasks.} While the recipe recovers 88\% of the gap on CIFAR-10 (simple task), it actually \emph{exceeds} FP32 accuracy on CIFAR-100 (+1.0\%) and Tiny ImageNet (+1.3\%). Harder tasks benefit more from KD regularization.}
+\label{fig:recipe_vs_fp32}
+\end{figure}
 
 \subsection{Deployment Implications}
 
@@ -393,19 +439,33 @@ The minimal accuracy loss (0.41\%) makes this approach viable for applications w
 \textbf{Why Does This Recipe Work?}
 Our findings suggest a hierarchical view of quantization sensitivity. Early layers process continuous, fine-grained signals (pixel intensities) that require precise weight values. Later layers operate on increasingly abstract, categorical representations that tolerate coarse quantization. Knowledge distillation complements this by providing richer training signal---the soft label distribution encodes inter-class relationships that hard labels cannot capture.
 
+\textbf{The Gap Scales with Task Complexity.}
+We observe that the accuracy gap between FP32 and ternary models grows with task complexity: 3.49\% on CIFAR-10 (10 classes), 4.34\% on CIFAR-100 (100 classes), and 5.81\% on Tiny ImageNet (200 classes) (Figure~\ref{fig:gap_scaling}). This scaling is consistent with information-theoretic predictions: ternary weights carry only $\log_2(3) \approx 1.58$ bits, while the output entropy requirement $H(Y) = \log_2(C)$ grows with the number of classes~\cite{blumenfeld2019meanfield}. As the classification task demands more information capacity, the ternary network operates closer to its fundamental limit. This phenomenon---widely observed but never formally quantified in the binary/ternary literature---suggests that our recipe becomes even more critical for large-scale deployment.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/gap_scaling.pdf}
+\caption{\textbf{Gap scaling with task complexity.} The accuracy gap between FP32 and BitNet grows roughly logarithmically with the number of classes, consistent with information-theoretic predictions about ternary capacity limits.}
+\label{fig:gap_scaling}
+\end{figure}
+
+\textbf{Why Lower $\alpha$ Works for Ternary Networks.}
+Our hyperparameter search revealed that ternary networks prefer $\alpha=0.5$--$0.7$ (more hard labels) rather than the literature standard $\alpha=0.9$. This contradicts conventional KD wisdom but has a coherent explanation: quantization already provides strong implicit regularization~\cite{kim2019qkd}. Tang et al.~\cite{tang2020understanding} decomposed KD's benefits into label smoothing, example re-weighting, and inter-class structure. For ternary networks, the label-smoothing component becomes redundant---stacking soft-label regularization on top of quantization-induced regularization causes over-regularization that hurts the capacity-constrained student. Harder tasks (CIFAR-100) benefit even more from hard labels because the teacher's soft predictions are noisier across 100 classes, introducing more bias than useful information.
+
 \textbf{Comparison with TTQ.}
 Trained Ternary Quantization (TTQ)~\cite{zhu2017ttq} achieves near-zero accuracy gap by learning two asymmetric scaling factors per layer. This raises a natural question: why not use TTQ? The answer lies in deployment complexity. TTQ's learned scales ($W^p$, $W^n$) require floating-point storage and computation during inference. \bitnetb{}'s fixed $\{-1,0,+1\}$ values enable pure integer arithmetic---weights can be stored as 2-bit integers and convolutions become additions. Our recipe recovers most of the accuracy gap (88\%) while preserving this inference simplicity. For applications where deployment efficiency is paramount, the remaining 0.41\% accuracy loss may be an acceptable tradeoff.
 
 \textbf{Generalization.}
-Our recipe generalizes across task difficulty: on CIFAR-10 it recovers 88\% of the gap, while on CIFAR-100 it \emph{exceeds} FP32 by 1.0\%. The stronger KD benefit on harder tasks suggests that soft labels provide richer training signal when the classification problem is more challenging. The underlying principles should extend to other architectures (VGG, MobileNet) and datasets (ImageNet), though specific recovery percentages may vary.
+Our recipe generalizes across task difficulty: on CIFAR-10 it recovers 88\% of the gap, while on CIFAR-100 it \emph{exceeds} FP32 by 1.0\%, and on Tiny ImageNet by 1.3\%. The stronger KD benefit on harder tasks suggests that soft labels provide richer training signal when the classification problem is more challenging. The consistent pattern across three datasets (10, 100, and 200 classes) indicates the underlying principles should extend to other architectures, though specific recovery percentages may vary.
 
 \textbf{Limitations.}
 Our study has several limitations:
 \begin{itemize}
+    \item \textbf{Training recipe}: We use a standard training recipe (SGD, cosine schedule, basic augmentation) rather than SOTA-optimized settings. This ensures fair comparison between FP32 and BitNet---using advanced techniques for one but not the other would confound the analysis. Our findings about the \emph{gap} between full-precision and ternary models should generalize to stronger baselines.
     \item \textbf{No real latency measurements}: We report theoretical compression ($20\times$) but do not measure actual inference speedup, which depends on hardware and kernel implementations.
-    \item \textbf{CIFAR-focused}: Our main results are on CIFAR-10/100. ImageNet validation is ongoing.
     \item \textbf{Classification only}: Object detection, segmentation, and other tasks may exhibit different quantization sensitivity.
     \item \textbf{Training from scratch}: We do not evaluate quantization-aware fine-tuning of pretrained models.
+    \item \textbf{Scale}: While we validate on Tiny ImageNet (200 classes), larger-scale datasets (e.g., full ImageNet with 1000 classes) may require additional techniques.
 \end{itemize}
 
 % =============================================================================
@@ -420,20 +480,21 @@ We investigated practical methods for deploying ternary (1.58-bit) CNNs with min
 \begin{enumerate}
     \item \textbf{Augmentation fails}: Data augmentation cannot close the $\sim$3.5\% accuracy gap between ternary and full-precision CNNs, regardless of strategy.
     \item \textbf{\texttt{conv1} is critical}: The first convolutional layer accounts for 54--74\% of the accuracy gap despite comprising only 0.08\% of parameters.
-    \item \textbf{A practical recipe exists}: Keeping \texttt{conv1} in FP32 combined with knowledge distillation recovers 88\% of the accuracy gap on CIFAR-10 (88.48\% vs 88.89\% FP32) and \emph{exceeds FP32 on CIFAR-100} (63.40\% vs 62.40\%)---while maintaining $\sim$20$\times$ compression.
+    \item \textbf{A practical recipe exists}: Keeping \texttt{conv1} in FP32 combined with knowledge distillation recovers 88\% of the accuracy gap on CIFAR-10 (88.48\% vs 88.89\% FP32) and \emph{exceeds FP32 on harder tasks}: +1.0\% on CIFAR-100, +1.3\% on Tiny ImageNet---while maintaining $\sim$20$\times$ compression.
 \end{enumerate}
 
 Our message to practitioners: \textbf{for ternary CNNs, invest in distillation, not augmentation}. The recipe is simple to implement and provides a practical path for edge deployment with near-full-precision accuracy.
 
-\textbf{Future Work.} Several promising directions emerge from our findings and the literature:
+\textbf{Future Work.} Several promising directions emerge from our findings:
 
 \begin{enumerate}
-    \item \textbf{Feature-level distillation}: Recent work~\cite{elthakeb2020dcq} shows that matching intermediate feature representations (not just logits) can provide 5--20\% additional improvement for extremely quantized networks. Our vanilla soft-label approach ($T=4$, $\alpha=0.9$) likely leaves room for improvement.
-    \item \textbf{Temperature tuning}: Literature suggests higher temperatures ($T=6$--8) may be optimal for ternary networks, as softer distributions better guide capacity-constrained students.
-    \item \textbf{Scale validation}: Validating the recipe on ImageNet and other architectures (MobileNet, EfficientNet) to confirm generalization.
+    \item \textbf{Feature-level distillation}: Recent work~\cite{elthakeb2020dcq} shows that matching intermediate feature representations (not just logits) can provide 5--20\% additional improvement for extremely quantized networks. Our soft-label approach could benefit from feature matching.
+    \item \textbf{Larger-scale datasets}: Our Tiny ImageNet validation (200 classes) shows the recipe works at scale. Extending to full ImageNet (1000 classes) may require additional techniques like feature distillation or architecture-specific tuning.
     \item \textbf{Inference latency}: Measuring actual speedup with optimized ternary kernels (e.g., BitBLAS) on edge hardware.
     \item \textbf{Other tasks}: Extending to object detection, segmentation, and other vision tasks that may exhibit different quantization sensitivity patterns.
 \end{enumerate}
+
+We note that our hyperparameter search found $T=5$ optimal for CIFAR-10 and $T=6$ for CIFAR-100, and $\alpha=0.5$--$0.7$ outperformed the literature default of $\alpha=0.9$. These findings merit further investigation across other quantization settings.
 
 % =============================================================================
 % ACKNOWLEDGMENTS (for camera-ready)
@@ -567,6 +628,21 @@ A.~T.~Elthakeb, P.~Pilligundla, F.~Mireshghallah, A.~Alaghi, and H.~Esmaeilzadeh
 \newblock Divide and Conquer: Leveraging Intermediate Feature Representations for Quantized Training of Neural Networks.
 \newblock \emph{arXiv:1906.06033}, 2020.
 
+\bibitem{blumenfeld2019meanfield}
+Y.~Blumenfeld, D.~Gilboa, and D.~Soudry.
+\newblock A Mean Field Theory of Quantized Deep Networks: The Quantization-Depth Trade-Off.
+\newblock \emph{NeurIPS}, 2019.
+
+\bibitem{tang2020understanding}
+J.~Tang, S.~Shivanna, Z.~Zhao, D.~Lin, A.~Singh, E.~H.~Chi, and S.~Jain.
+\newblock Understanding and Improving Knowledge Distillation.
+\newblock \emph{arXiv:2002.03532}, 2020.
+
+\bibitem{le2015tinyimagenet}
+Y.~Le and X.~Yang.
+\newblock Tiny ImageNet Visual Recognition Challenge.
+\newblock CS 231N, Stanford University, 2015.
+
 \end{thebibliography}
 
 % =============================================================================
@@ -615,7 +691,7 @@ uv run python -m analysis.generate_figures
 cd paper && pdflatex main.tex
 \end{verbatim}
 
-To re-run all 143 experiments from scratch (approximately 200 GPU-hours on 2x A6000):
+To re-run all 195+ experiments from scratch (approximately 300 GPU-hours on 2x A6000):
 \begin{verbatim}
 uv run python -m experiments.sweep \
     --models resnet18 resnet50 \
@@ -640,8 +716,8 @@ Re-running with seeds $\{42, 123, 456\}$ produces identical results (verified ac
 \begin{itemize}
     \item \textbf{Hardware}: 2x NVIDIA RTX A6000 (48GB VRAM each)
     \item \textbf{Software}: PyTorch 2.1+, CUDA 12.4, Python 3.11
-    \item \textbf{Training time}: $\sim$45 min per CIFAR experiment, $\sim$8 hours per ImageNet experiment
-    \item \textbf{Total compute}: $\sim$200 GPU-hours for all 143 experiments
+    \item \textbf{Training time}: $\sim$45 min per CIFAR experiment, $\sim$2 hours per Tiny ImageNet experiment
+    \item \textbf{Total compute}: $\sim$300 GPU-hours for all 195+ experiments
 \end{itemize}
 
 \subsection{Result Verification}
