@@ -28,11 +28,15 @@ class AblationMode(Enum):
 
     For MobileNet/EfficientNet architectures:
     - conv_stem: First convolutional layer
+
+    For ConvNeXt architectures:
+    - stem: Patchify stem (multi-layer block)
     """
 
     NONE = "none"  # Full BitNet (all layers quantized)
     KEEP_CONV1 = "keep_conv1"  # Keep first conv in FP32 (ResNet)
     KEEP_CONV_STEM = "keep_conv_stem"  # Keep first conv in FP32 (MobileNet/EfficientNet)
+    KEEP_STEM = "keep_stem"  # Keep stem block in FP32 (ConvNeXt)
     KEEP_LAYER1 = "keep_layer1"  # Keep first residual block in FP32
     KEEP_LAYER4 = "keep_layer4"  # Keep last residual block in FP32
     KEEP_FC = "keep_fc"  # Keep classifier in FP32
@@ -43,9 +47,22 @@ ABLATION_SKIP_LAYERS: dict[AblationMode, set[str]] = {
     AblationMode.NONE: set(),
     AblationMode.KEEP_CONV1: {"conv1"},
     AblationMode.KEEP_CONV_STEM: {"conv_stem"},
+    AblationMode.KEEP_STEM: {"stem"},
     AblationMode.KEEP_LAYER1: {"layer1"},
     AblationMode.KEEP_LAYER4: {"layer4"},
     AblationMode.KEEP_FC: {"fc", "head", "classifier"},  # Different model naming
+}
+
+
+# Architecture-specific learning rate defaults
+# Depthwise separable convolutions (MobileNet, EfficientNet) need lower lr
+ARCHITECTURE_LR_DEFAULTS: dict[str, float] = {
+    "resnet18": 0.1,
+    "resnet50": 0.1,
+    "vgg16": 0.1,
+    "mobilenetv2_100": 0.01,  # Depthwise separables unstable at 0.1
+    "efficientnet_b0": 0.01,  # Same architecture pattern as MobileNet
+    "convnext_tiny": 0.1,  # Standard CNN, should work at 0.1
 }
 
 
@@ -130,7 +147,14 @@ class EpochMetrics:
 
 
 # Experiment matrix
-MODELS = ["resnet18", "resnet50", "vgg16", "mobilenetv2_100", "efficientnet_b0"]
+MODELS = [
+    "resnet18",
+    "resnet50",
+    "vgg16",  # Standard CNNs
+    "mobilenetv2_100",
+    "efficientnet_b0",  # Efficient CNNs (need lr=0.01)
+    "convnext_tiny",  # Modern architecture
+]
 DATASETS = ["cifar10", "cifar100", "imagenet"]
 SEEDS = [42, 123, 456]
 
