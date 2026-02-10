@@ -6,14 +6,18 @@
 \toprule
 Model & Ablation & Accuracy (\%) & Gap Recovery \\
 \midrule
-resnet18 & Full BitNet & 85.40 & 0\% \\
-resnet18 & keep\_conv1 & 87.40 & 57\% \\
-resnet18 & keep\_layer1 & 86.06 & 19\% \\
-resnet18 & keep\_layer4 & 85.30 & -3\% \\
+resnet18 & Full BitNet & 85.38 & 0\% \\
+resnet18 & keep\_conv1 & 87.40 & 58\% \\
+resnet18 & keep\_layer1 & 86.06 & 20\% \\
+resnet18 & keep\_layer4 & 85.30 & -2\% \\
 resnet18 & keep\_fc & 85.50 & 3\% \\
-resnet18 & FP32 baseline & 88.89 & 100\% \\
+resnet18 & FP32 baseline & 88.88 & 100\% \\
 \midrule
 resnet50 & Full BitNet & 86.23 & 0\% \\
+resnet50 & keep\_conv1 & 88.47 & 54\% \\
+resnet50 & keep\_layer1 & 86.78 & 13\% \\
+resnet50 & keep\_layer4 & 85.81 & -10\% \\
+resnet50 & keep\_fc & 86.02 & -5\% \\
 resnet50 & FP32 baseline & 90.42 & 100\% \\
 \bottomrule
 \end{tabular}
