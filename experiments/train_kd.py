@@ -147,9 +147,13 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
     # Training setup
     criterion = KDLoss(temperature=temperature, alpha=alpha)
     ce_criterion = nn.CrossEntropyLoss()  # For evaluation
-    optimizer = optim.SGD(
-        student.parameters(), lr=config.lr, momentum=0.9, weight_decay=config.weight_decay, nesterov=True
-    )
+    optimizer: optim.AdamW | optim.SGD
+    if config.optimizer == "adamw":
+        optimizer = optim.AdamW(student.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+    else:  # Default to SGD
+        optimizer = optim.SGD(
+            student.parameters(), lr=config.lr, momentum=0.9, weight_decay=config.weight_decay, nesterov=True
+        )
     scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs)
 
     # Save config
@@ -230,6 +234,7 @@ def main() -> None:
     parser.add_argument("--weight-decay", type=float, default=DEFAULTS.weight_decay)
     parser.add_argument("--scheduler", default=DEFAULTS.scheduler, choices=["cosine", "step", "none"])
     parser.add_argument("--warmup-epochs", type=int, default=0)
+    parser.add_argument("--optimizer", default="sgd", choices=["sgd", "adamw"])
     parser.add_argument("--augment", default="basic", choices=AUGMENT_CHOICES)
     parser.add_argument("--seed", type=int, default=DEFAULTS.seed)
     parser.add_argument("--num-workers", type=int, default=DEFAULTS.num_workers)
@@ -267,6 +272,7 @@ def main() -> None:
         batch_size=args.batch_size,
         lr=args.lr,
         weight_decay=args.weight_decay,
+        optimizer=args.optimizer,
         scheduler=args.scheduler,
         warmup_epochs=args.warmup_epochs,
         augment=args.augment,

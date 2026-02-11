@@ -62,7 +62,18 @@ ARCHITECTURE_LR_DEFAULTS: dict[str, float] = {
     "vgg16": 0.1,
     "mobilenetv2_100": 0.01,  # Depthwise separables unstable at 0.1
     "efficientnet_b0": 0.01,  # Same architecture pattern as MobileNet
-    "convnext_tiny": 0.1,  # Standard CNN, should work at 0.1
+    "convnext_tiny": 0.004,  # ConvNeXt needs AdamW with lower lr
+}
+
+# Architecture-specific optimizer defaults
+# ConvNeXt requires AdamW for stable training
+ARCHITECTURE_OPTIMIZER_DEFAULTS: dict[str, str] = {
+    "resnet18": "sgd",
+    "resnet50": "sgd",
+    "vgg16": "sgd",
+    "mobilenetv2_100": "sgd",
+    "efficientnet_b0": "sgd",
+    "convnext_tiny": "adamw",  # ConvNeXt designed for AdamW
 }
 
 
