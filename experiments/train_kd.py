@@ -254,6 +254,7 @@ def main() -> None:
             args.seed,
             ablation=args.ablation,
             lr=args.lr,
+            optimizer=args.optimizer,
             kd_temperature=args.temperature,
             kd_alpha=args.alpha,
         )

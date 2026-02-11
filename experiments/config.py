@@ -113,6 +113,7 @@ class TrainConfig:
                 augment=self.augment,
                 ablation=self.ablation.value,
                 lr=self.lr,
+                optimizer=self.optimizer,
             )
             self.output_dir = str(experiment_dir)
 

@@ -23,6 +23,7 @@ class TrainingDefaults:
     lr: float = 0.1
     augment: str = "basic"
     ablation: str = "none"
+    optimizer: str = "sgd"
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ def get_experiment_dir(
     augment: str = TRAINING_DEFAULTS.augment,
     ablation: str = TRAINING_DEFAULTS.ablation,
     lr: float = TRAINING_DEFAULTS.lr,
+    optimizer: str = TRAINING_DEFAULTS.optimizer,
     kd_temperature: float | None = None,
     kd_alpha: float | None = None,
 ) -> Path:
@@ -78,12 +80,16 @@ def get_experiment_dir(
             parts.append(augment)
         if ablation != TRAINING_DEFAULTS.ablation:
             parts.append(ablation)
+        if optimizer != TRAINING_DEFAULTS.optimizer:
+            parts.append(optimizer)
         if lr != TRAINING_DEFAULTS.lr:
             parts.append(f"lr{lr:g}")
     else:
         parts.append("bit_kd")
         if ablation != TRAINING_DEFAULTS.ablation:
             parts.append(ablation)
+        if optimizer != TRAINING_DEFAULTS.optimizer:
+            parts.append(optimizer)
         if lr != TRAINING_DEFAULTS.lr:
             parts.append(f"lr{lr:g}")
         if kd_temperature is not None and kd_temperature != KD_DEFAULTS.temperature:
