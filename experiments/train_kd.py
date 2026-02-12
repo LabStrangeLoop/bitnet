@@ -104,7 +104,8 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
     # Skip if already completed
     if results_path.exists():
         log.warning("Skipping %s (already completed)", output_dir)
-        return json.loads(results_path.read_text())
+        result: dict = json.loads(results_path.read_text())
+        return result
 
     set_seed(config.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -229,7 +229,7 @@ def figure_gap_scaling(output: Path) -> None:
 
     # Custom x-axis
     ax.set_xticks(log_classes)
-    ax.set_xticklabels(classes)
+    ax.set_xticklabels([str(c) for c in classes])
     ax.set_xlim(0.7, 2.6)
     ax.set_ylim(0, 10)
 
