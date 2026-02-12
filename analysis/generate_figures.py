@@ -25,9 +25,7 @@ def accuracy_comparison_plot(df: pd.DataFrame, output_path: Path, augment: str =
 
     for ax, dataset in zip(axes, datasets):
         data = df[df["dataset"] == dataset]
-        pivot = data.pivot_table(
-            values="best_acc", index="model", columns="version", aggfunc="mean"
-        )
+        pivot = data.pivot_table(values="best_acc", index="model", columns="version", aggfunc="mean")
 
         pivot.plot(kind="bar", ax=ax, rot=45)
         ax.set_title(dataset.upper())

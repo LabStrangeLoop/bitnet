@@ -18,7 +18,5 @@ class BitConv2d(nn.Conv2d):
         w_quant = ste_ternary(self.weight)
         beta = self.weight.abs().mean()
 
-        out = f.conv2d(
-            x_quant, w_quant, self.bias, self.stride, self.padding, self.dilation, self.groups
-        )
+        out = f.conv2d(x_quant, w_quant, self.bias, self.stride, self.padding, self.dilation, self.groups)
         return dequantize(out, gamma, beta, self.num_bits)
