@@ -123,7 +123,7 @@ def augmentation_gap_plot(df: pd.DataFrame, output_path: Path) -> None:
     plt.close()
 
 
-def save_figures(df: pd.DataFrame, output_dir: str = "paper/figures") -> None:
+def save_figures(df: pd.DataFrame, output_dir: str = "paper/tmlr/figures") -> None:
     """Generate and save all figures."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -136,8 +136,9 @@ def save_figures(df: pd.DataFrame, output_dir: str = "paper/figures") -> None:
         accuracy_comparison_plot(df, output, augment=augment)
         accuracy_delta_heatmap(df, output, augment=augment)
 
-    # Augmentation ablation plot
-    augmentation_gap_plot(df, output)
+    # Augmentation ablation plot (exclude imagenet)
+    df_no_imagenet = df[df["dataset"] != "imagenet"] if "dataset" in df.columns else df
+    augmentation_gap_plot(df_no_imagenet, output)
 
     print(f"Figures saved to {output}")
 

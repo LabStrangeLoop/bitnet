@@ -235,7 +235,7 @@ def layer_ablation_table(df: pd.DataFrame, dataset: str = "cifar10", augment: st
     return "\n".join(lines)
 
 
-def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tables") -> None:
+def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tmlr/tables") -> None:
     """Save all tables to files."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
