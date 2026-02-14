@@ -13,6 +13,8 @@ def accuracy_table(df: pd.DataFrame, augment: str = "basic") -> str:
     """Generate LaTeX table comparing standard vs bit accuracy by model and dataset."""
     if "augment" in df.columns:
         df = df[df["augment"] == augment]
+    if "ablation" in df.columns:
+        df = df[df["ablation"] == "none"]
 
     versions = df["version"].unique()
     if len(versions) < 2:
@@ -75,6 +77,10 @@ def augmentation_ablation_table(df: pd.DataFrame) -> str:
         "Model & Dataset & " + " & ".join(augments) + r" \\",
         r"\midrule",
     ]
+
+    # Exclude ablation experiments from gap calculation
+    if "ablation" in df.columns:
+        df = df[df["ablation"] == "none"]
 
     for (model, dataset), group in df.groupby(["model", "dataset"]):
         row_vals = [str(model), str(dataset)]
