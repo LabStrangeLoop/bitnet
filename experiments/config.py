@@ -93,6 +93,9 @@ class TrainConfig:
     optimizer: str = "sgd"
     scheduler: str = "cosine"
     warmup_epochs: int = 0
+    min_lr: float = 0.0  # Minimum LR for cosine scheduler
+    mixup_alpha: float = 0.0  # Mixup alpha (0 = disabled)
+    label_smoothing: float = 0.0  # Label smoothing (0 = disabled)
     augment: str = "basic"
     seed: int = 42
     num_workers: int = 4

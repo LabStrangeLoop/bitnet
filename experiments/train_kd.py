@@ -136,17 +136,21 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
     log.info("Teacher loaded from: %s", teacher_path)
 
     skip_layers = ABLATION_SKIP_LAYERS.get(config.ablation, set())
-    student = get_model(config.model, num_classes, bit_version=True, pretrained=False, skip_layers=skip_layers)
+    # Student can be FP32 (for FP32+KD control) or BitNet
+    is_bitnet = config.version == Version.BIT
+    student = get_model(config.model, num_classes, bit_version=is_bitnet, pretrained=False, skip_layers=skip_layers)
     if torch.cuda.device_count() > 1:
         student = nn.DataParallel(student)
     student = student.to(device)
-    if config.ablation != AblationMode.NONE:
+    if config.version == Version.STD:
+        log.info("Student: %s (FP32, for KD control)", config.model)
+    elif config.ablation != AblationMode.NONE:
         log.info("Student: %s (bit, ablation=%s)", config.model, config.ablation.value)
     else:
         log.info("Student: %s (bit)", config.model)
 
     # Training setup
-    criterion = KDLoss(temperature=temperature, alpha=alpha)
+    criterion = KDLoss(temperature=temperature, alpha=alpha, label_smoothing=config.label_smoothing)
     ce_criterion = nn.CrossEntropyLoss()  # For evaluation
     optimizer: optim.AdamW | optim.SGD
     if config.optimizer == "adamw":
@@ -155,7 +159,7 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
         optimizer = optim.SGD(
             student.parameters(), lr=config.lr, momentum=0.9, weight_decay=config.weight_decay, nesterov=True
         )
-    scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs)
+    scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs, config.min_lr)
 
     # Save config
     config_dict = dataclasses.asdict(config)
@@ -222,10 +226,11 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train BitNet with Knowledge Distillation")
+    parser = argparse.ArgumentParser(description="Train with Knowledge Distillation")
     parser.add_argument("--model", default=DEFAULTS.model)
     parser.add_argument("--dataset", default=DEFAULTS.dataset, choices=list(DATASET_NUM_CLASSES.keys()))
     parser.add_argument("--teacher-path", type=Path, required=True, help="Path to teacher best_model.pth")
+    parser.add_argument("--student-is-fp32", action="store_true", help="Train FP32 student (for FP32+KD control)")
     parser.add_argument("--temperature", type=float, default=4.0, help="KD temperature (default: 4.0)")
     parser.add_argument("--alpha", type=float, default=0.9, help="Weight for soft loss (default: 0.9)")
     parser.add_argument("--ablation", default="none", choices=[m.value for m in AblationMode])
@@ -235,6 +240,9 @@ def main() -> None:
     parser.add_argument("--weight-decay", type=float, default=DEFAULTS.weight_decay)
     parser.add_argument("--scheduler", default=DEFAULTS.scheduler, choices=["cosine", "step", "none"])
     parser.add_argument("--warmup-epochs", type=int, default=0)
+    parser.add_argument("--min-lr", type=float, default=0.0, help="Minimum LR for cosine scheduler")
+    parser.add_argument("--mixup-alpha", type=float, default=0.0, help="Mixup alpha (0=disabled)")
+    parser.add_argument("--label-smoothing", type=float, default=0.0, help="Label smoothing (0=disabled)")
     parser.add_argument("--optimizer", default="sgd", choices=["sgd", "adamw"])
     parser.add_argument("--augment", default="basic", choices=AUGMENT_CHOICES)
     parser.add_argument("--seed", type=int, default=DEFAULTS.seed)
@@ -268,7 +276,7 @@ def main() -> None:
     config = TrainConfig(
         model=args.model,
         dataset=args.dataset,
-        version=Version.BIT,  # Always BitNet for KD student
+        version=Version.STD if args.student_is_fp32 else Version.BIT,
         ablation=AblationMode(args.ablation),
         epochs=args.epochs,
         batch_size=args.batch_size,
@@ -277,6 +285,9 @@ def main() -> None:
         optimizer=args.optimizer,
         scheduler=args.scheduler,
         warmup_epochs=args.warmup_epochs,
+        min_lr=args.min_lr,
+        mixup_alpha=args.mixup_alpha,
+        label_smoothing=args.label_smoothing,
         augment=args.augment,
         seed=args.seed,
         num_workers=args.num_workers,

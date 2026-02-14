@@ -82,7 +82,7 @@ def train(config: TrainConfig) -> dict:
     log.info("Model: %s (%s)", config.model, config.version.value)
 
     # Training setup
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
     optimizer: optim.AdamW | optim.SGD
     if config.optimizer == "adamw":
         optimizer = optim.AdamW(
@@ -98,7 +98,7 @@ def train(config: TrainConfig) -> dict:
             weight_decay=config.weight_decay,
             nesterov=True,
         )
-    scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs)
+    scheduler = get_scheduler(optimizer, config.scheduler, config.epochs, config.warmup_epochs, config.min_lr)
     config_dict = dataclasses.asdict(config)
     config_dict["version"] = config.version.value  # Serialize enum
     config_dict["ablation"] = config.ablation.value  # Serialize enum
@@ -113,7 +113,9 @@ def train(config: TrainConfig) -> dict:
     writer = SummaryWriter(tb_dir) if config.tensorboard else None
 
     for epoch in range(start_epoch + 1, config.epochs + 1):
-        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device, quiet=config.quiet)
+        train_loss, train_acc = train_epoch(
+            model, train_loader, criterion, optimizer, device, mixup_alpha=config.mixup_alpha, quiet=config.quiet
+        )
         test_loss, test_acc = evaluate(model, test_loader, criterion, device, quiet=config.quiet)
         scheduler.step()
 
@@ -167,6 +169,9 @@ def main() -> None:
     parser.add_argument("--optimizer", default="sgd", choices=["sgd", "adamw"])
     parser.add_argument("--scheduler", default=DEFAULTS.scheduler, choices=["cosine", "step", "none"])
     parser.add_argument("--warmup-epochs", type=int, default=0)
+    parser.add_argument("--min-lr", type=float, default=0.0, help="Minimum LR for cosine scheduler")
+    parser.add_argument("--mixup-alpha", type=float, default=0.0, help="Mixup alpha (0=disabled)")
+    parser.add_argument("--label-smoothing", type=float, default=0.0, help="Label smoothing (0=disabled)")
     parser.add_argument("--augment", default="basic", choices=AUGMENT_CHOICES)
     parser.add_argument("--seed", type=int, default=DEFAULTS.seed)
     parser.add_argument("--num-workers", type=int, default=DEFAULTS.num_workers)
@@ -190,6 +195,9 @@ def main() -> None:
         optimizer=args.optimizer,
         scheduler=args.scheduler,
         warmup_epochs=args.warmup_epochs,
+        min_lr=args.min_lr,
+        mixup_alpha=args.mixup_alpha,
+        label_smoothing=args.label_smoothing,
         augment=args.augment,
         seed=args.seed,
         num_workers=args.num_workers,

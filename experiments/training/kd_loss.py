@@ -12,15 +12,17 @@ class KDLoss(nn.Module):
     where soft_loss = T² * KL(student_soft, teacher_soft)
     """
 
-    def __init__(self, temperature: float = 4.0, alpha: float = 0.9):
+    def __init__(self, temperature: float = 4.0, alpha: float = 0.9, label_smoothing: float = 0.0):
         """
         Args:
             temperature: Softmax temperature for soft targets (typically 4-20).
             alpha: Weight for distillation loss (1-alpha for hard targets).
+            label_smoothing: Label smoothing for hard loss (0 = disabled).
         """
         super().__init__()
         self.temperature = temperature
         self.alpha = alpha
+        self.label_smoothing = label_smoothing
 
     def forward(
         self,
@@ -33,8 +35,8 @@ class KDLoss(nn.Module):
         Returns:
             Tuple of (total_loss, metrics_dict with individual losses).
         """
-        # Hard target loss (standard cross-entropy)
-        hard_loss = functional.cross_entropy(student_logits, targets)
+        # Hard target loss (standard cross-entropy with optional label smoothing)
+        hard_loss = functional.cross_entropy(student_logits, targets, label_smoothing=self.label_smoothing)
 
         # Soft target loss (KL divergence with temperature scaling)
         soft_student = functional.log_softmax(student_logits / self.temperature, dim=1)
