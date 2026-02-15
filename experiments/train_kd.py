@@ -43,9 +43,22 @@ def set_seed(seed: int) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-def load_teacher(model_name: str, num_classes: int, checkpoint_path: Path, device: torch.device) -> nn.Module:
+def load_teacher(
+    model_name: str,
+    num_classes: int,
+    checkpoint_path: Path,
+    device: torch.device,
+    use_cifar_stem: bool = False,
+) -> nn.Module:
     """Load pre-trained FP32 teacher model."""
-    teacher = get_model(model_name, num_classes, bit_version=False, pretrained=False)
+    teacher = get_model(
+        model_name,
+        num_classes,
+        bit_version=False,
+        pretrained=False,
+        skip_layers=None,
+        use_cifar_stem=use_cifar_stem,
+    )
     state_dict = torch.load(checkpoint_path, map_location=device, weights_only=True)
     teacher.load_state_dict(state_dict)
     teacher = teacher.to(device)
@@ -132,13 +145,20 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
 
     # Models
     num_classes = DATASET_NUM_CLASSES.get(config.dataset, 10)
-    teacher = load_teacher(config.model, num_classes, teacher_path, device)
+    teacher = load_teacher(config.model, num_classes, teacher_path, device, config.use_cifar_stem)
     log.info("Teacher loaded from: %s", teacher_path)
 
     skip_layers = ABLATION_SKIP_LAYERS.get(config.ablation, set())
     # Student can be FP32 (for FP32+KD control) or BitNet
     is_bitnet = config.version == Version.BIT
-    student = get_model(config.model, num_classes, bit_version=is_bitnet, pretrained=False, skip_layers=skip_layers)
+    student = get_model(
+        config.model,
+        num_classes,
+        bit_version=is_bitnet,
+        pretrained=False,
+        skip_layers=skip_layers,
+        use_cifar_stem=config.use_cifar_stem,
+    )
     if torch.cuda.device_count() > 1:
         student = nn.DataParallel(student)
     student = student.to(device)
@@ -234,6 +254,11 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=4.0, help="KD temperature (default: 4.0)")
     parser.add_argument("--alpha", type=float, default=0.9, help="Weight for soft loss (default: 0.9)")
     parser.add_argument("--ablation", default="none", choices=[m.value for m in AblationMode])
+    parser.add_argument(
+        "--use-cifar-stem",
+        action="store_true",
+        help="Use CIFAR-adapted stem (3x3 stride-1, no maxpool)",
+    )
     parser.add_argument("--epochs", type=int, default=DEFAULTS.epochs)
     parser.add_argument("--batch-size", type=int, default=DEFAULTS.batch_size)
     parser.add_argument("--lr", type=float, default=DEFAULTS.lr)
@@ -278,6 +303,7 @@ def main() -> None:
         dataset=args.dataset,
         version=Version.STD if args.student_is_fp32 else Version.BIT,
         ablation=AblationMode(args.ablation),
+        use_cifar_stem=args.use_cifar_stem,
         epochs=args.epochs,
         batch_size=args.batch_size,
         lr=args.lr,

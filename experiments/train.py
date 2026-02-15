@@ -75,7 +75,14 @@ def train(config: TrainConfig) -> dict:
     num_classes = DATASET_NUM_CLASSES.get(config.dataset, 10)
     is_bit = config.version == Version.BIT
     skip_layers = ABLATION_SKIP_LAYERS.get(config.ablation, set())
-    model = get_model(config.model, num_classes, is_bit, config.pretrained, skip_layers)
+    model = get_model(
+        config.model,
+        num_classes,
+        is_bit,
+        config.pretrained,
+        skip_layers,
+        config.use_cifar_stem,
+    )
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
     model = model.to(device)
@@ -162,6 +169,11 @@ def main() -> None:
         help="Layer-wise ablation: keep specified layer in FP32",
     )
     parser.add_argument("--pretrained", action="store_true", default=False)
+    parser.add_argument(
+        "--use-cifar-stem",
+        action="store_true",
+        help="Use CIFAR-adapted stem (3x3 stride-1, no maxpool)",
+    )
     parser.add_argument("--epochs", type=int, default=DEFAULTS.epochs)
     parser.add_argument("--batch-size", type=int, default=DEFAULTS.batch_size)
     parser.add_argument("--lr", type=float, default=DEFAULTS.lr)
@@ -188,6 +200,7 @@ def main() -> None:
         version=Version.from_bool(args.bit_version),
         ablation=AblationMode(args.ablation),
         pretrained=args.pretrained,
+        use_cifar_stem=args.use_cifar_stem,
         epochs=args.epochs,
         batch_size=args.batch_size,
         lr=args.lr,

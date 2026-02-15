@@ -86,6 +86,7 @@ class TrainConfig:
     version: Version = Version.STD
     ablation: AblationMode = AblationMode.NONE
     pretrained: bool = False
+    use_cifar_stem: bool = False  # Use CIFAR-adapted stem (3x3 stride-1, no maxpool)
     epochs: int = 200
     batch_size: int = 128
     lr: float = 0.1
