@@ -1,6 +1,6 @@
-# Reproducing All Experiments
+# Reproducing Experiments
 
-This document contains all commands needed to reproduce the experiments in the paper.
+This document provides high-level guidance for reproducing the experiments in the paper.
 
 ## Prerequisites
 
@@ -11,121 +11,86 @@ cd bitnet
 uv sync
 ```
 
+## Full Experiment List
+
+**See [PROPER_BASELINE_COMMANDS.sh](PROPER_BASELINE_COMMANDS.sh)** for complete, organized experiment commands.
+
+The paper results are from **Wave 1 + Wave 2** experiments (135 baseline + 14 statistical power):
+- **Wave 1** (36 experiments): FP32 baselines + BitNet baselines with CIFAR-adapted stem
+- **Wave 2** (99 experiments): FP32+KD controls, layer ablations (with/without KD), full recipe
+
+All commands in PROPER_BASELINE_COMMANDS.sh include proper training recipe:
+- 300 epochs with 5-epoch warmup
+- Mixup (α=0.2) + label smoothing (0.1) for CIFAR-10 and Tiny-ImageNet
+- No mixup/smoothing for CIFAR-100 (hurts fine-grained classification)
+
+## Critical Architecture Note
+
+**All CIFAR-10, CIFAR-100, and Tiny-ImageNet experiments use `--use-cifar-stem` flag.**
+
+This modifies the ResNet stem architecture:
+- ❌ ImageNet stem: 7×7 stride-2 conv + maxpool (destroys 32×32 spatial info)
+- ✅ CIFAR-adapted stem: 3×3 stride-1 conv, no maxpool (preserves spatial resolution)
+
+This is standard practice (kuangliu/pytorch-cifar) and essential for fair comparison. Without it:
+- CIFAR-10: ~89% (wrong) vs ~96% (correct)
+- CIFAR-100: ~62% (wrong) vs ~79% (correct)
+
+See `paper/research/10_resnet_stem_architecture.md` for detailed analysis.
+
+## Quick Examples
+
+### Single Training Run
+
+```bash
+# FP32 baseline (ResNet-18, CIFAR-10)
+uv run python -m experiments.train \
+  --use-cifar-stem --model resnet18 --dataset cifar10 \
+  --epochs 300 --warmup-epochs 5 --min-lr 1e-5 \
+  --mixup-alpha 0.2 --label-smoothing 0.1 --seed 42
+
+# BitNet baseline
+uv run python -m experiments.train \
+  --use-cifar-stem --model resnet18 --dataset cifar10 --bit-version \
+  --epochs 300 --warmup-epochs 5 --min-lr 1e-5 \
+  --mixup-alpha 0.2 --label-smoothing 0.1 --seed 42
+
+# BitNet + Recipe (keep_conv1 + KD)
+uv run python -m experiments.train_kd \
+  --use-cifar-stem --model resnet18 --dataset cifar10 \
+  --teacher-path results/raw/cifar10/resnet18/std_s42/best_model.pth \
+  --ablation keep_conv1 \
+  --epochs 300 --warmup-epochs 5 --min-lr 1e-5 \
+  --mixup-alpha 0.2 --label-smoothing 0.1 --seed 42
+```
+
+### Sweep Multiple Configurations
+
+```bash
+# Use sweep.py for rapid parallel execution
+uv run python -m experiments.sweep \
+  --models resnet18 resnet50 \
+  --datasets cifar10 cifar100 tiny_imagenet \
+  --seeds 42 123 456
+```
+
+Note: sweep.py automatically adds `--use-cifar-stem` for CIFAR/Tiny-ImageNet datasets.
+
 ## Safety Features
 
-Both training scripts include safety checks to prevent accidental overwrites:
+Training scripts include safety checks:
+- **Auto-generated paths**: Based on configuration (no manual naming)
+- **Overwrite protection**: Refuses to run if results exist
+- **Force flag**: Use `--force` to intentionally overwrite
 
-- **Auto-generated paths**: Experiment directories are automatically named based on configuration
-- **Overwrite protection**: Scripts refuse to run if results already exist
-- **Force flag**: Use `--force` to intentionally overwrite existing results
-
-Path naming convention (non-default hyperparameters are automatically included):
-
+Path naming convention:
 - Standard: `results/raw/{dataset}/{model}/{version}[_augment][_ablation]_s{seed}`
 - KD: `results/raw_kd/{dataset}/{model}/bit_kd[_ablation][_t{temp}][_a{alpha}]_s{seed}`
 
-## 1. Main Experiments (FP32 and BitNet baselines)
+## Analysis and Figure Generation
 
 ```bash
-# All model/dataset combinations with 3 seeds each
-uv run python -m experiments.sweep \
-  --models resnet18 resnet50 \
-  --datasets cifar10 cifar100 \
-  --seeds 42 123 456
-```
-
-## 2. Augmentation Study
-
-```bash
-# Test all augmentation strategies
-uv run python -m experiments.sweep \
-  --models resnet18 resnet50 \
-  --datasets cifar10 cifar100 \
-  --augments basic cutout randaug full \
-  --seeds 42 123 456
-```
-
-## 3. Layer-wise Ablation Study
-
-```bash
-# Test keeping individual layers in FP32
-uv run python -m experiments.sweep \
-  --models resnet18 resnet50 \
-  --datasets cifar10 cifar100 \
-  --ablations none keep_conv1 keep_layer1 keep_layer4 keep_fc \
-  --seeds 42 123 456
-```
-
-## 4. Knowledge Distillation Experiments
-
-### 4a. KD without ablation (BitNet + KD)
-
-```bash
-# CIFAR-10
-uv run python -m experiments.sweep_kd \
-  --models resnet18 \
-  --datasets cifar10 \
-  --seeds 42 123 456
-
-# CIFAR-100
-uv run python -m experiments.sweep_kd \
-  --models resnet18 \
-  --datasets cifar100 \
-  --seeds 42 123 456
-```
-
-### 4b. conv1 + KD (Practical Recipe, T=4)
-
-```bash
-# CIFAR-10 with conv1 in FP32 + KD
-for seed in 42 123 456; do
-  uv run python -m experiments.train_kd --model resnet18 --dataset cifar10 \
-    --teacher-path results/raw/cifar10/resnet18/std_s42/best_model.pth \
-    --ablation keep_conv1 --temperature 4.0 --seed $seed
-done
-
-# CIFAR-100 with conv1 in FP32 + KD
-for seed in 42 123 456; do
-  uv run python -m experiments.train_kd --model resnet18 --dataset cifar100 \
-    --teacher-path results/raw/cifar100/resnet18/std_s42/best_model.pth \
-    --ablation keep_conv1 --temperature 4.0 --seed $seed
-done
-```
-
-### 4c. Temperature Ablation (T=6, T=8)
-
-```bash
-# T=6
-uv run python -m experiments.train_kd --model resnet18 --dataset cifar10 \
-  --teacher-path results/raw/cifar10/resnet18/std_s42/best_model.pth \
-  --ablation keep_conv1 --temperature 6.0 --seed 42 \
-  --output-dir results/raw_kd/cifar10/resnet18/bit_kd_keep_conv1_t6_s42
-
-# T=8
-uv run python -m experiments.train_kd --model resnet18 --dataset cifar10 \
-  --teacher-path results/raw/cifar10/resnet18/std_s42/best_model.pth \
-  --ablation keep_conv1 --temperature 8.0 --seed 42 \
-  --output-dir results/raw_kd/cifar10/resnet18/bit_kd_keep_conv1_t8_s42
-```
-
-### 4d. ResNet50 + KD (Generalization)
-
-```bash
-# ResNet50 CIFAR-10
-uv run python -m experiments.train_kd --model resnet50 --dataset cifar10 \
-  --teacher-path results/raw/cifar10/resnet50/std_s42/best_model.pth \
-  --ablation keep_conv1 --seed 42
-
-# ResNet50 CIFAR-100
-uv run python -m experiments.train_kd --model resnet50 --dataset cifar100 \
-  --teacher-path results/raw/cifar100/resnet50/std_s42/best_model.pth \
-  --ablation keep_conv1 --seed 42
-```
-
-## 5. Analysis and Figure Generation
-
-```bash
-# Aggregate all results
+# Aggregate all results from raw/ and raw_kd/
 uv run python -m analysis.aggregate_results
 
 # Generate LaTeX tables
@@ -135,19 +100,70 @@ uv run python -m analysis.generate_tables
 uv run python -m analysis.generate_figures
 ```
 
-## Expected Results
+Outputs:
+- `results/processed/aggregated.csv` - All experiment results
+- `paper/tmlr/tables/*.tex` - LaTeX tables
+- `paper/tmlr/figures/*.{png,pdf}` - Figures for paper
 
-| Experiment | CIFAR-10 | CIFAR-100 |
-|------------|----------|-----------|
-| FP32 (ResNet18) | 88.89% | 62.40% |
-| BitNet | 85.40% | 58.06% |
-| BitNet + KD (T=4) | 86.66% | 60.55% |
-| BitNet + keep_conv1 | 87.40% | 61.27% |
-| **BitNet + keep_conv1 + KD** | **88.48%** | **63.40%** |
+## Expected Results (Wave 1 - CIFAR-adapted stem)
 
-Note: CIFAR-100 with conv1+KD exceeds FP32 baseline (63.40% vs 62.40%).
+| Experiment | CIFAR-10 | CIFAR-100 | Tiny-ImageNet |
+|------------|----------|-----------|---------------|
+| FP32 (ResNet-18) | 96.07 ± 0.15% | 79.14 ± 0.11% | 67.04 ± 0.23% |
+| BitNet | 94.64 ± 0.20% | 74.93 ± 0.23% | 62.10 ± 0.22% |
+| **Gap** | **1.43%** | **4.21%** | **4.95%** |
 
-## Hardware
+Wave 2 results (Phase 4 Recipe: keep_conv1 + KD) pending completion.
 
-- 2x NVIDIA RTX A6000 (48GB VRAM each)
-- Training times: ResNet18/CIFAR ~2h, ResNet50/CIFAR ~4h
+## Hardware Requirements
+
+- GPU: NVIDIA RTX A6000 (48GB) or equivalent
+- Training times:
+  - CIFAR-10/100: ~2.5 hours per experiment (300 epochs)
+  - Tiny-ImageNet: ~5 hours per experiment (300 epochs)
+- Total compute: ~135 experiments × 2.5-5 hrs ≈ 340-675 GPU hours
+
+Note: ResNet-50 + Tiny-ImageNet requires `--batch-size 64` (OOM with 128).
+
+## Troubleshooting
+
+**Low CIFAR-100 accuracy (~62% instead of ~79%)**
+- Missing `--use-cifar-stem` flag
+- Check that stem uses 3×3 stride-1 conv, not 7×7 stride-2
+
+**Out of Memory (OOM)**
+- ResNet-50 + Tiny-ImageNet: Use `--batch-size 64`
+- BitNet uses MORE memory during training than FP32 (FP32 gradients + STE overhead)
+
+**Results don't match paper**
+- Ensure using proper training recipe (300 epochs, warmup, mixup, label smoothing)
+- Verify teacher model exists at specified path for KD experiments
+- Check augmentation flags: CIFAR-10/Tiny-IN get mixup, CIFAR-100 doesn't
+
+## Directory Structure
+
+```
+results/
+├── raw/           # Standard training (FP32, BitNet, ablations without KD)
+│   ├── cifar10/
+│   │   └── resnet18/
+│   │       ├── std_s42/           # FP32 baseline seed 42
+│   │       ├── bit_s42/           # BitNet baseline seed 42
+│   │       └── bit_keep_conv1_s42/ # BitNet + conv1 FP32 (no KD)
+│   ├── cifar100/
+│   └── tiny_imagenet/
+│
+└── raw_kd/        # Knowledge distillation experiments
+    ├── cifar10/
+    │   └── resnet18/
+    │       ├── bit_kd_s42/           # BitNet + KD
+    │       └── bit_kd_keep_conv1_s42/ # Recipe: conv1 + KD
+    ├── cifar100/
+    └── tiny_imagenet/
+```
+
+Each experiment directory contains:
+- `config.json` - Full training configuration
+- `results.json` - Final metrics (test_acc, train_loss, etc.)
+- `best_model.pth` - Best checkpoint
+- `tensorboard/` - TensorBoard logs
