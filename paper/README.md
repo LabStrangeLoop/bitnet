@@ -45,19 +45,13 @@ paper/
 │       │   ├── persona_1_theory.md       # ML theory researcher
 │       │   ├── persona_2_expert.md       # Quantization expert
 │       │   └── persona_3_practitioner.md # Systems/deployment
-│       ├── round_0/             # Ready for first 3 reviews
-│       │   ├── (awaiting reviewer_1.md)
-│       │   ├── (awaiting reviewer_2.md)
-│       │   └── (awaiting reviewer_3.md)
-│       ├── round_N/             # Future rounds (3 reviews each)
-│       └── archive_*/           # Old single-reviewer rounds (Feb 14, 2026)
+│       └── round_0/             # Current 3-reviewer feedback
+│           ├── reviewer_1.md
+│           ├── reviewer_2.md
+│           ├── reviewer_3.md
+│           └── SYNTHESIS.md     # Consolidated feedback
 │
-├── research/                    # Research prompts and notes
-├── archive/                     # Old multi-venue work (if needed)
-│   ├── neurips-workshop/        # 7.5/10 Accept (can resurrect)
-│   ├── other-venues/            # bmvc, cvpr, iclr, neurips, wacv
-│   └── reviewers/               # Old multi-venue review system
-│
+├── research/                    # Research prompts and literature review (10 files)
 ├── venues.md                    # Deadline tracker & strategy
 ├── notes.md                     # Research notes and experiment log
 └── README.md                    # This file
@@ -71,11 +65,11 @@ paper/
 **Review Status:** Ready for Round 0 (3-reviewer system)
 **Paper Length:** 18 pages (no page limit for TMLR)
 
-### Key Results
-- 3-9% accuracy gap between ternary and FP32 on CIFAR
-- Augmentation widens gap: FP32 benefits 1.5-3.7× more
-- conv1 accounts for 54-74% of gap (only 0.08% params)
-- Recipe (FP32 conv1 + KD): 89% recovery on CIFAR-10, exceeds FP32 on harder tasks
+### Key Results (Wave 1 Complete - Feb 2026)
+- FP32 baselines with CIFAR-adapted stem: 96.07% CIFAR-10, 79.14% CIFAR-100
+- BitNet gap: 1.43% CIFAR-10, 4.21% CIFAR-100, 4.95% Tiny-ImageNet (ResNet-18)
+- Wave 2 in progress: FP32+KD baseline, layer ablations, full recipe testing
+- Architecture finding: CIFAR-adapted stem essential (7-17pp improvement vs ImageNet stem)
 
 ---
 
