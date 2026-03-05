@@ -85,7 +85,9 @@ def get_experiment_dir(
         if lr != TRAINING_DEFAULTS.lr:
             parts.append(f"lr{lr:g}")
     else:
-        parts.append("bit_kd")
+        # Use version-specific prefix for KD experiments (std_kd vs bit_kd)
+        kd_prefix = f"{version}_kd"
+        parts.append(kd_prefix)
         if ablation != TRAINING_DEFAULTS.ablation:
             parts.append(ablation)
         if optimizer != TRAINING_DEFAULTS.optimizer:

@@ -281,11 +281,13 @@ def main() -> None:
 
     # Auto-generate output dir if not specified
     if not args.output_dir:
+        version_str = "std" if args.student_is_fp32 else "bit"
         experiment_dir = get_experiment_dir(
             ExperimentType.KD,
             args.dataset,
             args.model,
             args.seed,
+            version=version_str,
             ablation=args.ablation,
             lr=args.lr,
             optimizer=args.optimizer,
