@@ -38,8 +38,11 @@ data/
 # Results
 results/raw/*
 !results/raw/.gitkeep
+results/raw_kd/*
+!results/raw_kd/.gitkeep
 results/processed/*
 !results/processed/.gitkeep
+*.tar.gz
 
 # Hydra
 outputs/
