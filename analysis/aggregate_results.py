@@ -107,7 +107,8 @@ def save_aggregated(df: pd.DataFrame, output_path: str = "results/processed/aggr
 
 
 if __name__ == "__main__":
-    df = load_results()
+    # Load from both raw/ and raw_kd/ directories
+    df = load_results(["results/raw", "results/raw_kd"])
     print(f"Loaded {len(df)} experiment results")
     print(df.head())
 
