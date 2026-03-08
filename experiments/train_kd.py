@@ -137,10 +137,20 @@ def train_kd(config: TrainConfig, teacher_path: Path, temperature: float, alpha:
     test_set = get_dataset(config.dataset, "test", root=config.data_dir)
     log.info("Dataset: %s (train=%d, test=%d)", config.dataset, len(train_set), len(test_set))  # type: ignore[arg-type]
     train_loader = DataLoader(
-        train_set, config.batch_size, shuffle=True, num_workers=config.num_workers, pin_memory=True
+        train_set,
+        config.batch_size,
+        shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=True,
+        persistent_workers=True if config.num_workers > 0 else False,
     )
     test_loader = DataLoader(
-        test_set, config.batch_size * 2, shuffle=False, num_workers=config.num_workers, pin_memory=True
+        test_set,
+        config.batch_size * 2,
+        shuffle=False,
+        num_workers=config.num_workers,
+        pin_memory=True,
+        persistent_workers=True if config.num_workers > 0 else False,
     )
 
     # Models

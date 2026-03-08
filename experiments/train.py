@@ -62,6 +62,7 @@ def train(config: TrainConfig) -> dict:
         shuffle=True,
         num_workers=config.num_workers,
         pin_memory=True,
+        persistent_workers=True if config.num_workers > 0 else False,
     )
     test_loader = DataLoader(
         test_set,
@@ -69,6 +70,7 @@ def train(config: TrainConfig) -> dict:
         shuffle=False,
         num_workers=config.num_workers,
         pin_memory=True,
+        persistent_workers=True if config.num_workers > 0 else False,
     )
 
     # Model
