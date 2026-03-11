@@ -36,7 +36,7 @@ class TTQConv2d(nn.Conv2d):
         # TTQ weight quantization with learned scales
         w_quant = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
 
-        # Use average of wp and wn as beta for dequantization
+        # Use average of positive scales as beta for dequantization
         beta = (self.wp.abs() + self.wn.abs()) / 2
 
         out = f.conv2d(x_quant, w_quant, self.bias, self.stride, self.padding, self.dilation, self.groups)

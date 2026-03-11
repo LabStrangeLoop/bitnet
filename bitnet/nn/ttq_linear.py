@@ -42,7 +42,7 @@ class TTQLinear(nn.Linear):
         # TTQ weight quantization with learned scales
         w_quant = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
 
-        # Use wp as beta for dequantization (average of wp and wn)
+        # Use average of positive scales as beta for dequantization
         beta = (self.wp.abs() + self.wn.abs()) / 2
 
         out = f.linear(x_quant, w_quant, self.bias)
