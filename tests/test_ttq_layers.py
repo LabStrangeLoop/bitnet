@@ -33,13 +33,14 @@ class TestTTQLinear:
         # with classification loss, delta gets gradients through the loss.
 
     def test_parameters_initialized_properly(self) -> None:
-        """TTQ parameters should be initialized to reasonable values."""
+        """TTQ parameters should be initialized per paper (Eq. 2)."""
         layer = TTQLinear(64, 32)
-        # wp and wn should be initialized to 1.0
-        assert torch.allclose(layer.wp, torch.ones(1))
-        assert torch.allclose(layer.wn, torch.ones(1))
-        # delta should be initialized to 0.7 * weight.std()
-        assert layer.delta > 0
+        weight_mean_abs = layer.weight.data.abs().mean()
+        # wp and wn should be initialized to E[|W|]
+        assert torch.allclose(layer.wp, weight_mean_abs, rtol=1e-5)
+        assert torch.allclose(layer.wn, weight_mean_abs, rtol=1e-5)
+        # delta should be initialized to 0.7 * E[|W|]
+        assert torch.allclose(layer.delta, 0.7 * weight_mean_abs, rtol=1e-5)
 
     def test_numerical_stability_during_training(self) -> None:
         """Training should not produce NaN losses."""
@@ -94,13 +95,14 @@ class TestTTQConv2d:
         # with classification loss, delta gets gradients through the loss.
 
     def test_parameters_initialized_properly(self) -> None:
-        """TTQ parameters should be initialized to reasonable values."""
+        """TTQ parameters should be initialized per paper (Eq. 2)."""
         layer = TTQConv2d(3, 16, kernel_size=3)
-        # wp and wn should be initialized to 1.0
-        assert torch.allclose(layer.wp, torch.ones(1))
-        assert torch.allclose(layer.wn, torch.ones(1))
-        # delta should be initialized to 0.7 * weight.std()
-        assert layer.delta > 0
+        weight_mean_abs = layer.weight.data.abs().mean()
+        # wp and wn should be initialized to E[|W|]
+        assert torch.allclose(layer.wp, weight_mean_abs, rtol=1e-5)
+        assert torch.allclose(layer.wn, weight_mean_abs, rtol=1e-5)
+        # delta should be initialized to 0.7 * E[|W|]
+        assert torch.allclose(layer.delta, 0.7 * weight_mean_abs, rtol=1e-5)
 
     def test_numerical_stability_during_training(self) -> None:
         """Training should not produce NaN losses."""

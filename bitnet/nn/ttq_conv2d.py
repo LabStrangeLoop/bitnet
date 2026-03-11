@@ -20,13 +20,12 @@ class TTQConv2d(nn.Conv2d):
         super().__init__(*args, **kwargs)
         self.num_bits = num_bits
 
-        # Learnable positive/negative scales (init to 1.0)
-        self.register_parameter("wp", nn.Parameter(torch.ones(1)))
-        self.register_parameter("wn", nn.Parameter(torch.ones(1)))
-
-        # Learnable threshold (init to 0.7 * std as in paper)
-        weight_std = self.weight.data.std()
-        self.register_parameter("delta", nn.Parameter(torch.ones(1) * 0.7 * weight_std))
+        # Initialize scales and threshold per TTQ paper (Zhu et al., ICLR 2017)
+        # Eq. 2: threshold = 0.7 * E[|W|], scales = E[|W|]
+        weight_mean_abs = self.weight.data.abs().mean()
+        self.register_parameter("wp", nn.Parameter(torch.ones(1) * weight_mean_abs))
+        self.register_parameter("wn", nn.Parameter(torch.ones(1) * weight_mean_abs))
+        self.register_parameter("delta", nn.Parameter(torch.ones(1) * 0.7 * weight_mean_abs))
 
     def forward(self, x: Tensor) -> Tensor:
         # Activation quantization (same as BitNet)
