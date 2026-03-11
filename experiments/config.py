@@ -7,10 +7,11 @@ from .paths import ExperimentType, get_experiment_dir
 
 
 class Version(Enum):
-    """Model version: standard (FP32) or bit-quantized (1.58-bit)."""
+    """Model version: standard (FP32), bit-quantized (1.58-bit), or TTQ (trained ternary)."""
 
     STD = "std"
     BIT = "bit"
+    TTQ = "ttq"
 
     @classmethod
     def from_bool(cls, bit_version: bool) -> "Version":

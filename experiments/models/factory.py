@@ -3,7 +3,7 @@
 import timm
 from torch import nn
 
-from bitnet.layer_swap import replace_layers
+from bitnet.layer_swap import replace_layers, replace_layers_ttq
 from bitnet.layer_swap_selective import replace_layers_selective
 
 
@@ -41,8 +41,9 @@ def get_model(
     pretrained: bool = True,
     skip_layers: set[str] | None = None,
     use_cifar_stem: bool = False,
+    is_ttq: bool = False,
 ) -> nn.Module:
-    """Get a model using timm with optional bit quantization.
+    """Get a model using timm with optional bit or TTQ quantization.
 
     Args:
         name: Model architecture name (e.g., 'resnet18', 'mobilenetv3_small_100')
@@ -51,6 +52,7 @@ def get_model(
         pretrained: If True, load pretrained weights
         skip_layers: Layer prefixes to keep in FP32 (for ablation experiments)
         use_cifar_stem: If True, adapt ResNet stem for small images (CIFAR/Tiny-ImageNet)
+        is_ttq: If True, replace layers with TTQ (Trained Ternary Quantization)
 
     Returns:
         PyTorch model
@@ -60,7 +62,11 @@ def get_model(
     if use_cifar_stem and "resnet" in name.lower():
         adapt_resnet_stem_for_small_images(model)
 
-    if bit_version:
+    if is_ttq:
+        # TTQ: replace all layers with learned-scale ternary quantization
+        replace_layers_ttq(model)
+    elif bit_version:
+        # BitNet: replace layers with fixed ternary quantization
         if skip_layers:
             replace_layers_selective(model, skip_layers)
         else:

@@ -76,6 +76,7 @@ def train(config: TrainConfig) -> dict:
     # Model
     num_classes = DATASET_NUM_CLASSES.get(config.dataset, 10)
     is_bit = config.version == Version.BIT
+    is_ttq = config.version == Version.TTQ
     skip_layers = ABLATION_SKIP_LAYERS.get(config.ablation, set())
     model = get_model(
         config.model,
@@ -84,6 +85,7 @@ def train(config: TrainConfig) -> dict:
         config.pretrained,
         skip_layers,
         config.use_cifar_stem,
+        is_ttq=is_ttq,
     )
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -163,7 +165,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default=DEFAULTS.model)
     parser.add_argument("--dataset", default=DEFAULTS.dataset, choices=list(DATASET_NUM_CLASSES.keys()))
-    parser.add_argument("--bit-version", action="store_true")
+    parser.add_argument("--bit-version", action="store_true", help="Use BitNet 1.58-bit quantization")
+    parser.add_argument("--ttq-version", action="store_true", help="Use TTQ (Trained Ternary Quantization)")
     parser.add_argument(
         "--ablation",
         default="none",
@@ -196,10 +199,18 @@ def main() -> None:
     parser.add_argument("--force", action="store_true", help="Overwrite existing results")
     args = parser.parse_args()
 
+    # Determine version: TTQ > BIT > STD
+    if args.ttq_version:
+        version = Version.TTQ
+    elif args.bit_version:
+        version = Version.BIT
+    else:
+        version = Version.STD
+
     config = TrainConfig(
         model=args.model,
         dataset=args.dataset,
-        version=Version.from_bool(args.bit_version),
+        version=version,
         ablation=AblationMode(args.ablation),
         pretrained=args.pretrained,
         use_cifar_stem=args.use_cifar_stem,
