@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as f
 from torch import Tensor
 
 
@@ -20,10 +21,10 @@ def ttq_quantize(weight: Tensor, wp: Tensor, wn: Tensor, delta: Tensor) -> Tenso
     Returns:
         Quantized tensor in {-wn, 0, +wp}
     """
-    # Ensure scales and threshold are positive (unconstrained parameters)
-    wp_pos = wp.abs()
-    wn_pos = wn.abs()
-    delta_pos = delta.abs()
+    # Ensure scales and threshold are positive with softplus (maintains gradients)
+    wp_pos = f.softplus(wp)
+    wn_pos = f.softplus(wn)
+    delta_pos = f.softplus(delta)
 
     # Apply threshold-based ternary quantization
     pos_mask = weight > delta_pos

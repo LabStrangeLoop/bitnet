@@ -37,7 +37,7 @@ class TTQConv2d(nn.Conv2d):
         w_quant = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
 
         # Use average of positive scales as beta for dequantization
-        beta = (self.wp.abs() + self.wn.abs()) / 2
+        beta = (f.softplus(self.wp) + f.softplus(self.wn)) / 2
 
         out = f.conv2d(x_quant, w_quant, self.bias, self.stride, self.padding, self.dilation, self.groups)
         return dequantize(out, gamma, beta, self.num_bits)
