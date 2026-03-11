@@ -3,7 +3,7 @@ import torch.nn.functional as f
 from torch import Tensor
 
 
-def ttq_quantize(weight: Tensor, wp: Tensor, wn: Tensor, delta: Tensor) -> Tensor:
+def ttq_quantize(weight: Tensor, wp: Tensor, wn: Tensor, delta: Tensor) -> tuple[Tensor, Tensor, Tensor]:
     """Quantize weights to {-wn, 0, +wp} using Trained Ternary Quantization.
 
     TTQ (Zhu et al., ICLR 2017) learns per-layer positive/negative scales
@@ -19,7 +19,7 @@ def ttq_quantize(weight: Tensor, wp: Tensor, wn: Tensor, delta: Tensor) -> Tenso
         delta: Learnable threshold
 
     Returns:
-        Quantized tensor in {-wn, 0, +wp}
+        Tuple of (quantized weights, wp_positive, wn_positive)
     """
     # Ensure scales and threshold are positive with softplus (maintains gradients)
     wp_pos = f.softplus(wp)
@@ -35,4 +35,5 @@ def ttq_quantize(weight: Tensor, wp: Tensor, wn: Tensor, delta: Tensor) -> Tenso
     quantized[neg_mask] = -wn_pos
 
     # Straight-through estimator for gradients
-    return quantized + (weight - weight.detach())
+    quantized_ste = quantized + (weight - weight.detach())
+    return quantized_ste, wp_pos, wn_pos

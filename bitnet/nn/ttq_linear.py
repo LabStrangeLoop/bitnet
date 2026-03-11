@@ -40,10 +40,10 @@ class TTQLinear(nn.Linear):
         x_quant, gamma = quantize_activations(x, self.num_bits)
 
         # TTQ weight quantization with learned scales
-        w_quant = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
+        w_quant, wp_pos, wn_pos = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
 
         # Use average of positive scales as beta for dequantization
-        beta = (f.softplus(self.wp) + f.softplus(self.wn)) / 2
+        beta = (wp_pos + wn_pos) / 2
 
         out = f.linear(x_quant, w_quant, self.bias)
         return dequantize(out, gamma, beta, self.num_bits)
