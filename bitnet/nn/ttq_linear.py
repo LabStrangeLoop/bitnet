@@ -28,10 +28,19 @@ class TTQLinear(nn.Linear):
 
         # Initialize scales and threshold per TTQ paper (Zhu et al., ICLR 2017)
         # Eq. 2: threshold = 0.7 * E[|W|], scales = E[|W|]
+        # Note: We use softplus to ensure positivity, so initialize with inverse softplus
+        # to get the desired values AFTER softplus is applied
         weight_mean_abs = self.weight.data.abs().mean()
-        self.register_parameter("wp", nn.Parameter(torch.ones(1) * weight_mean_abs))
-        self.register_parameter("wn", nn.Parameter(torch.ones(1) * weight_mean_abs))
-        self.register_parameter("delta", nn.Parameter(torch.ones(1) * 0.7 * weight_mean_abs))
+
+        # Inverse softplus: softplus_inv(x) = log(exp(x) - 1)
+        def inv_softplus(x: float) -> float:
+            if x < 1e-3:
+                return x  # For very small values, softplus(x) ≈ x
+            return float(torch.log(torch.exp(torch.tensor(x)) - 1.0))
+
+        self.register_parameter("wp", nn.Parameter(torch.ones(1) * inv_softplus(weight_mean_abs.item())))
+        self.register_parameter("wn", nn.Parameter(torch.ones(1) * inv_softplus(weight_mean_abs.item())))
+        self.register_parameter("delta", nn.Parameter(torch.ones(1) * inv_softplus((0.7 * weight_mean_abs).item())))
 
     def forward(self, x: Tensor) -> Tensor:
         # Pure TTQ: Only quantize weights, use FP32 activations
