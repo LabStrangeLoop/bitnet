@@ -2,23 +2,24 @@ import torch
 import torch.nn.functional as f
 from torch import Tensor, nn
 
-from bitnet.nn.quantization import dequantize, quantize_activations
 from bitnet.nn.ttq_quantization import ttq_quantize
 
 
 class TTQConv2d(nn.Conv2d):
     """Conv2d layer with TTQ (Trained Ternary Quantization).
 
-    TTQ learns per-layer positive/negative scales (Wp, Wn) and threshold (delta)
+    Pure TTQ as described in the paper: ternary weight quantization with FP32 activations.
+    Testing showed that mixing BitNet's activation quantization with TTQ weights fails to train.
+
+    TTQ learns per-layer positive/negative scales (wp, wn) and threshold (delta)
     during training, achieving near-FP32 accuracy at the cost of 2 additional
     FP32 parameters per layer.
 
     Reference: Zhu et al., "Trained Ternary Quantization", ICLR 2017
     """
 
-    def __init__(self, *args, num_bits: int = 8, **kwargs):  # type: ignore[no-untyped-def]
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
-        self.num_bits = num_bits
 
         # Initialize scales and threshold per TTQ paper (Zhu et al., ICLR 2017)
         # Eq. 2: threshold = 0.7 * E[|W|], scales = E[|W|]
@@ -28,16 +29,7 @@ class TTQConv2d(nn.Conv2d):
         self.register_parameter("delta", nn.Parameter(torch.ones(1) * 0.7 * weight_mean_abs))
 
     def forward(self, x: Tensor) -> Tensor:
-        # Activation quantization (same as BitNet)
-        x = f.layer_norm(x, x.shape[1:])
-        x_quant, gamma = quantize_activations(x, self.num_bits)
-
-        # TTQ weight quantization with learned scales (already scaled!)
-        w_quant, wp_pos, wn_pos = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
-
-        # Beta = 1.0 because quantized weights are already scaled by wp/wn
-        # Unlike BitNet which scales {-1,0,+1} with beta in dequant, TTQ pre-scales
-        beta = torch.ones_like(wp_pos)
-
-        out = f.conv2d(x_quant, w_quant, self.bias, self.stride, self.padding, self.dilation, self.groups)
-        return dequantize(out, gamma, beta, self.num_bits)
+        # Pure TTQ: Only quantize weights, use FP32 activations
+        # This is TTQ as described in the original paper
+        w_quant, _, _ = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
+        return f.conv2d(x, w_quant, self.bias, self.stride, self.padding, self.dilation, self.groups)

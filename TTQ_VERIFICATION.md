@@ -89,6 +89,16 @@ Unlike fixed ternary {-1, 0, +1}, TTQ learns three FP32 parameters per layer:
 3. **NaN losses:** Parameters could go negative without constraints
    - Fixed: Softplus enforcement
 
+4. **CRITICAL: Activation quantization incompatibility** (final fix)
+   - Bug: Mixing BitNet's activation quant/dequant with TTQ weights caused training to fail (stuck at 10%)
+   - Root cause: TTQ weights are pre-scaled {-wn, 0, +wp} but BitNet's dequant expects unscaled {-1,0,+1}
+   - Tested 4 configs:
+     - A: beta=1.0 → FAILS (10% accuracy)
+     - B: beta=(wp+wn)/2 → FAILS (10% accuracy)
+     - C: beta=weight.abs().mean() → FAILS (10% accuracy)
+     - D: Pure TTQ (no activation quant) → **WORKS** (49% accuracy in 2 epochs!)
+   - Solution: Use pure TTQ as in original paper (ternary weights, FP32 activations)
+
 ## Expected Behavior
 
 - **Accuracy:** Should achieve ~0.5-1.5% better than BitNet+Recipe (based on literature)
