@@ -38,11 +38,12 @@ class TTQLinear(nn.Linear):
         x = f.layer_norm(x, x.shape[1:])
         x_quant, gamma = quantize_activations(x, self.num_bits)
 
-        # TTQ weight quantization with learned scales
+        # TTQ weight quantization with learned scales (already scaled!)
         w_quant, wp_pos, wn_pos = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
 
-        # Use average of positive scales as beta for dequantization
-        beta = (wp_pos + wn_pos) / 2
+        # Beta = 1.0 because quantized weights are already scaled by wp/wn
+        # Unlike BitNet which scales {-1,0,+1} with beta in dequant, TTQ pre-scales
+        beta = torch.ones_like(wp_pos)
 
         out = f.linear(x_quant, w_quant, self.bias)
         return dequantize(out, gamma, beta, self.num_bits)
