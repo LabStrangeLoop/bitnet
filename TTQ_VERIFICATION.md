@@ -89,7 +89,7 @@ Unlike fixed ternary {-1, 0, +1}, TTQ learns three FP32 parameters per layer:
 3. **NaN losses:** Parameters could go negative without constraints
    - Fixed: Softplus enforcement
 
-4. **CRITICAL: Activation quantization incompatibility** (final fix)
+4. **CRITICAL: Activation quantization incompatibility**
    - Bug: Mixing BitNet's activation quant/dequant with TTQ weights caused training to fail (stuck at 10%)
    - Root cause: TTQ weights are pre-scaled {-wn, 0, +wp} but BitNet's dequant expects unscaled {-1,0,+1}
    - Tested 4 configs:
@@ -98,6 +98,22 @@ Unlike fixed ternary {-1, 0, +1}, TTQ learns three FP32 parameters per layer:
      - C: beta=weight.abs().mean() → FAILS (10% accuracy)
      - D: Pure TTQ (no activation quant) → **WORKS** (49% accuracy in 2 epochs!)
    - Solution: Use pure TTQ as in original paper (ternary weights, FP32 activations)
+
+5. **CRITICAL: Zero gradients to TTQ parameters** (final fix)
+   - Bug: After fixing activation quantization, training still stuck at 10% on server
+   - Root cause: PyTorch indexing assignment breaks gradient flow to scalar parameters
+
+     ```python
+     quantized[pos_mask] = wp_pos  # ❌ Breaks gradients to wp_pos
+     ```
+
+   - Diagnosis: Gradient verification showed 0/63 TTQ parameters had gradients
+   - Additional bug: Softplus initialization caused delta to be 5-7x too large after transformation
+   - Solution:
+     - Implement custom `TTQQuantizeFunction` with explicit backward pass
+     - Gradients: `grad_wp = (grad_output * pos_mask).sum()`
+     - Initialize parameters with inverse softplus to get correct values after transformation
+   - Verified: wp.grad=0.047, wn.grad=0.046 (proper gradient flow)
 
 ## Expected Behavior
 
