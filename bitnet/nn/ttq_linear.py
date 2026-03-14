@@ -45,5 +45,10 @@ class TTQLinear(nn.Linear):
     def forward(self, x: Tensor) -> Tensor:
         # Pure TTQ: Only quantize weights, use FP32 activations
         # This is TTQ as described in the original paper
+        # Type assertions for mypy - these are always Tensors after register_parameter
+        assert isinstance(self.wp, Tensor)
+        assert isinstance(self.wn, Tensor)
+        assert isinstance(self.delta, Tensor)
+
         w_quant, _, _ = ttq_quantize(self.weight, self.wp, self.wn, self.delta)
         return f.linear(x, w_quant, self.bias)
