@@ -23,7 +23,7 @@ Without answers to these questions, practitioners lack guidance on \textit{when}
 
 \subsection{Our Approach: Systematic Investigation}
 
-We conduct a comprehensive empirical study of ternary quantization for CNNs, comprising 135 controlled experiments across three datasets (CIFAR-10, CIFAR-100, Tiny-ImageNet), two architectures (ResNet-18, ResNet-50), and multiple training configurations. Crucially, we include proper baseline controls requested by the research community: \textbf{FP32+KD baselines} that isolate the quantization penalty from knowledge distillation benefits. The experiments uncover three surprising patterns:
+We conduct a comprehensive empirical study of ternary quantization for CNNs, comprising 153 controlled experiments across three datasets (CIFAR-10, CIFAR-100, Tiny-ImageNet), two architectures (ResNet-18, ResNet-50), and multiple training configurations. Crucially, we include proper baseline controls requested by the research community: \textbf{FP32+KD baselines} that isolate the quantization penalty from knowledge distillation benefits. The experiments uncover three surprising patterns:
 
 \textbf{1. Layer Sensitivity is Highly Skewed.} Through systematic layer-wise ablation (keeping specific layers in FP32 while quantizing others), we find that the first convolutional layer (\texttt{conv1}) accounts for 30-74\% of recoverable accuracy loss—2.5× more than any other single layer. This asymmetry is consistent across datasets and architectures, pointing to \texttt{conv1} as an information bottleneck where quantization has outsized impact.
 
@@ -33,7 +33,7 @@ We conduct a comprehensive empirical study of ternary quantization for CNNs, com
 
 \subsection{Contributions}
 
-This work makes three contributions. First, we establish reproducible methodology where every table, figure, and claim is programmatically generated from documented experiments. Our infrastructure includes complete documentation of 135 experiments with exact commands, deterministic training with seed control, automated analysis pipelines that transform raw results into publication-ready tables, and public code and data for community use. Beyond our specific findings on ternary quantization, we demonstrate best practices for rigorous empirical ML research.
+This work makes three contributions. First, we establish reproducible methodology where every table, figure, and claim is programmatically generated from documented experiments. Our infrastructure includes complete documentation of 153 experiments with exact commands, deterministic training with seed control, automated analysis pipelines that transform raw results into publication-ready tables, and public code and data for community use. Beyond our specific findings on ternary quantization, we demonstrate best practices for rigorous empirical ML research.
 
 Second, our systematic investigation quantifies layer-wise sensitivity (\texttt{conv1} accounts for 30-74\% of recoverable accuracy, identifying a clear target for mixed-precision deployment) and documents knowledge distillation's surprising failure mode: KD degrades ternary networks (-0.9\% to -3.1\%) while benefiting FP32 students, revealing capacity-dependent effectiveness. The degradation scales with task complexity (CIFAR-10: -0.9\%, Tiny-ImageNet: -3.1\%), suggesting soft labels overwhelm limited ternary representational capacity—a finding that opens testable future work on lower $\alpha$ values and specialized KD techniques.
 
@@ -57,8 +57,8 @@ We do \textit{not} claim that ternary quantization "matches or exceeds FP32" uni
 All experiments in this paper are fully reproducible. We provide:
 \begin{itemize}
     \item Complete source code (training, evaluation, analysis) at \url{https://github.com/LabStrangeLoop/bitnet}
-    \item Exact experiment commands in \texttt{PROPER\_BASELINE\_COMMANDS.sh}
-    \item All 135 experiment results (raw JSON, aggregated CSV)
+    \item Exact experiment commands in \texttt{EXPERIMENTS\_REFERENCE.sh}
+    \item All 153 experiment results (raw JSON, aggregated CSV)
     \item Automated table/figure generation scripts
     \item Deterministic training (same seed → identical results)
 \end{itemize}

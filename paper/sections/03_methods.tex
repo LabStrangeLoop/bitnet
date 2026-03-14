@@ -9,12 +9,12 @@ We describe our reproducible research methodology, experimental setup, and train
 \subsection{Reproducible Research Pipeline}
 \label{sec:methods:pipeline}
 
-Our research infrastructure ensures end-to-end reproducibility through automated pipelines with no manual intervention. The workflow follows five stages: (1) Training code (\texttt{experiments/*.py}) executes deterministic experiments, (2) 135 experiments produce raw JSON results (\texttt{results/raw*/}), (3) aggregation scripts (\texttt{aggregate\_results.py}) extract data to CSV, (4) analysis scripts generate LaTeX tables and PNG figures programmatically, (5) paper artifacts are automatically generated with no manual transcription. Every number in this paper is programmatically verified from raw experimental data.
+Our research infrastructure ensures end-to-end reproducibility through automated pipelines with no manual intervention. The workflow follows five stages: (1) Training code (\texttt{experiments/*.py}) executes deterministic experiments, (2) 153 experiments produce raw JSON results (\texttt{results/raw*/}), (3) aggregation scripts (\texttt{aggregate\_results.py}) extract data to CSV, (4) analysis scripts generate LaTeX tables and PNG figures programmatically, (5) paper artifacts are automatically generated with no manual transcription. Every number in this paper is programmatically verified from raw experimental data.
 
 \textbf{Pipeline stages:}
 
 \begin{enumerate}
-    \item \textbf{Training execution:} All 135 experiments documented in \texttt{PROPER\_BASELINE\_COMMANDS.sh} with exact commands, hyperparameters, and seeds. Each run produces:
+    \item \textbf{Training execution:} All 153 experiments documented in \texttt{EXPERIMENTS\_REFERENCE.sh} with exact commands, hyperparameters, and seeds. Each run produces:
     \begin{itemize}
         \item \texttt{results.json}: Final metrics (best accuracy, test accuracy)
         \item \texttt{config.json}: Complete training configuration
@@ -126,7 +126,7 @@ This architectural choice addresses Reviewer Issue \#1 (undertrained baselines).
     \item \textbf{Full:} Cutout + RandAugment + mixup + label smoothing (maximum augmentation)
 \end{itemize}
 
-All hyperparameters documented in \texttt{experiments/config.py} and experiment commands in \texttt{PROPER\_BASELINE\_COMMANDS.sh}.
+All hyperparameters documented in \texttt{experiments/config.py} and experiment commands in \texttt{EXPERIMENTS\_REFERENCE.sh}.
 
 \subsection{Ternary Quantization (BitNet)}
 \label{sec:methods:bitnet}
@@ -223,7 +223,7 @@ All experiments conducted on two NVIDIA GPU servers:
     \item KD experiments (300 epochs): 1.5× standard training time
 \end{itemize}
 
-\textbf{Total compute:} 135 experiments × average 6 hours = ~810 GPU-hours.
+\textbf{Total compute:} 153 experiments × average 6 hours = ~918 GPU-hours.
 
 \subsection{Evaluation Metrics}
 \label{sec:methods:metrics}
@@ -248,7 +248,7 @@ For each configuration, we report:
 
 We use $p < 0.05$ as significance threshold but emphasize \textit{effect sizes (Cohen's d)} and \textit{practical significance} (absolute accuracy gap) over p-values. With n=3 seeds, statistical power is limited; we focus on large, consistent effects (d > 0.8) as practically meaningful rather than marginal p-values.
 
-\textbf{Multiple comparisons:} While we conduct 135 experiments total, these are not 135 independent hypothesis tests—most are exploratory ablations investigating the same core phenomena (layer sensitivity, KD effects) across different architectures and datasets. We report \textit{uncorrected} p-values for transparency and focus statistical testing on key confirmatory comparisons: (1) BitNet vs FP32 (quantization gap), (2) BitNet vs BitNet+KD (KD failure), (3) BitNet+Recipe vs FP32+KD (recipe effectiveness). For exploratory ablations (layer sensitivity, architecture variations), we emphasize effect sizes and replication consistency over p-values.
+\textbf{Multiple comparisons:} While we conduct 153 experiments total, these are not 153 independent hypothesis tests—most are exploratory ablations investigating the same core phenomena (layer sensitivity, KD effects) across different architectures and datasets. We report \textit{uncorrected} p-values for transparency and focus statistical testing on key confirmatory comparisons: (1) BitNet vs FP32 (quantization gap), (2) BitNet vs BitNet+KD (KD failure), (3) BitNet+Recipe vs FP32+KD (recipe effectiveness). For exploratory ablations (layer sensitivity, architecture variations), we emphasize effect sizes and replication consistency over p-values.
 
 \subsection{Code and Data Availability}
 \label{sec:methods:availability}

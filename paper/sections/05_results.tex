@@ -198,7 +198,7 @@ Our recipe's FP32 conv1 requires mixed-precision inference support, which has im
 
 \subsection{Summary}
 
-Three patterns emerge from our 135 controlled experiments. First, quantization sensitivity is highly asymmetric: conv1 alone accounts for 30-74\% of recoverable accuracy loss despite representing only 0.08\% of parameters—2.5× more effective than any other layer. This asymmetry reveals that information bottlenecks at network entry are more critical for ternary quantization than commonly assumed.
+Three patterns emerge from our 153 controlled experiments. First, quantization sensitivity is highly asymmetric: conv1 alone accounts for 30-74\% of recoverable accuracy loss despite representing only 0.08\% of parameters—2.5× more effective than any other layer. This asymmetry reveals that information bottlenecks at network entry are more critical for ternary quantization than commonly assumed.
 
 Second, knowledge distillation exhibits a counterintuitive failure mode in extreme quantization. While KD benefits full-precision students on complex tasks (+0.9\% to +1.6\%), it actively degrades ternary networks (-0.9\% to -3.1\%), with degradation scaling by task complexity. This reveals capacity constraints unique to ternary weights \{-1, 0, +1\}, where soft labels overwhelm limited representational capacity.
 
