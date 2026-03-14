@@ -67,9 +67,9 @@ uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 2
 # Dry run (shows commands without executing)
 uv run python -m experiments.sweep --dry-run
 
-# Run all experiments (90 total: 5 models × 3 datasets × 2 versions × 3 seeds)
-# Uses --quiet mode automatically, shows compact progress: [1/90] Running... 92.34%
-uv run python -m experiments.sweep
+# Run all experiments (paper uses 2 models × 3 datasets × 2 versions × 3 seeds)
+# Uses --quiet mode automatically, shows compact progress
+uv run python -m experiments.sweep --models resnet18 resnet50
 
 # Run subset
 uv run python -m experiments.sweep --models resnet18 resnet50 --datasets cifar10 cifar100
@@ -156,9 +156,8 @@ uv run python -m analysis.generate_figures
 |-------|-----------|
 | ResNet-18 | `resnet18` |
 | ResNet-50 | `resnet50` |
-| VGG-16 | `vgg16` |
-| MobileNetV2 | `mobilenetv2_100` |
-| EfficientNet-B0 | `efficientnet_b0` |
+
+**Note:** The codebase supports additional architectures (VGG-16, MobileNetV2, EfficientNet-B0, ConvNeXt) via timm integration, but the paper focuses on ResNet-18 and ResNet-50 for systematic comparison across 153 experiments.
 
 ## Project Structure
 
@@ -279,9 +278,9 @@ Re-running experiments with the same seed produces bit-exact checkpoint MD5 hash
 
 Compare standard FP32 vs BitNet 1.58-bit across:
 
-- **Models**: ResNet-18, ResNet-50, VGG-16, MobileNetV2, EfficientNet-B0
-- **Datasets**: CIFAR-10, CIFAR-100, ImageNet-1k
-- **Seeds**: 3 seeds per configuration for statistical significance
+- **Models**: ResNet-18, ResNet-50
+- **Datasets**: CIFAR-10, CIFAR-100, Tiny-ImageNet
+- **Seeds**: 3 seeds per configuration for statistical significance (10 seeds for statistical power analysis)
 
 ### Augmentation Ablation Study
 
