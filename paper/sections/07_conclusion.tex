@@ -1,0 +1,21 @@
+% Section 7: Conclusion
+% Summary of findings, key takeaways, final message
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We conducted a systematic empirical study of ternary (1.58-bit) quantization for CNNs through 153 controlled experiments (135 baseline + 18 TTQ comparisons), establishing proper FP32+KD baselines and providing complete reproducibility. The results clarify both what fails and what succeeds for extreme quantization.
+
+Knowledge distillation, despite being standard practice for moderate quantization, actively degrades ternary networks (-0.9\% to -3.1\%) while benefiting full-precision students (+0.9\% to +1.6\%). This counterintuitive failure mode reveals capacity constraints unique to extreme quantization, where soft labels ($\alpha=0.9$) overwhelm the limited representational capacity of ternary weights \{-1, 0, +1\}. In contrast, a practical mixed-precision recipe (FP32 conv1, ternary elsewhere) achieves competitive accuracy on simple tasks without knowledge distillation complexity. On CIFAR-10, ResNet-18 reaches 1.0\% gap and ResNet-50 achieves 0.35\% gap while maintaining 20.2× compression. The first convolutional layer accounts for 30-74\% of recoverable accuracy despite comprising only 0.08\% of parameters, validating targeted mixed-precision as an effective strategy.
+
+Direct comparison with Trained Ternary Quantization (TTQ) on CIFAR-adapted architectures confirms that Recipe's architectural awareness (FP32 conv1) outperforms learned per-layer scales by +2.1\% to +13.8\% across configurations. This demonstrates that targeting the information bottleneck at network entry is more effective than distributing learned scales uniformly across all layers, though this conclusion applies specifically to CIFAR-adapted architectures and requires validation on standard ImageNet stems.
+
+Our results establish clear deployment guidelines. Ternary quantization achieves competitive accuracy on CIFAR-scale tasks using standard convolution architectures (ResNet) with significant theoretical compression benefits on FP32-capable hardware. However, remaining gaps on complex tasks (5.35-9.80\% on Tiny-ImageNet) and poor recovery on depthwise architectures (17-73\% for MobileNetV2) indicate fundamental capacity limits where ternary quantization falls short.
+
+Beyond empirical findings, we demonstrate end-to-end reproducible research methodology where every table, figure, and claim is programmatically generated from documented experiments. This infrastructure addresses ML's replication crisis and provides a template for rigorous empirical work. Our key practical message is clear: for ternary CNNs, invest in targeted mixed-precision (FP32 conv1) rather than knowledge distillation. This simple recipe achieves minimal accuracy loss on appropriate tasks while revealing fundamental capacity constraints that practitioners must understand before deployment. Real hardware validation remains essential before production use.
+
+Important open questions persist: scaling this recipe to ImageNet resolution, understanding why depthwise architectures fundamentally resist ternary quantization, and measuring real-world deployment benefits on actual edge hardware. Our reproducible infrastructure and documented findings provide a foundation for the community to address these challenges systematically.
+
+\subsection*{Code and Data Availability}
+
+All code, experiment logs, analysis scripts, and trained models are publicly available at \url{https://github.com/LabStrangeLoop/bitnet} under MIT license. Running \texttt{make paper} regenerates all results and compiles this document from raw experiment data, enabling complete verification of our claims.

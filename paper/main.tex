@@ -1,0 +1,76 @@
+% TMLR Submission: Understanding and Closing the Ternary Quantization Gap
+% New version with modular sections
+
+\documentclass[10pt]{article}
+
+% Page geometry
+\usepackage[margin=1in, top=0.9in, bottom=0.9in]{geometry}
+
+% Import packages and macros
+\input{preamble}
+\input{macros}
+
+% Graphics path for figures
+\graphicspath{{figures/}}
+
+% =============================================================================
+% METADATA
+% =============================================================================
+
+\title{Understanding and Closing the Ternary Quantization Gap:\\An Empirical Study}
+
+\author{
+  Dario Cazzani\\
+  Cisco Systems Inc.\\
+  \texttt{dcazzani@cisco.com}
+}
+
+\date{}
+
+% =============================================================================
+% DOCUMENT
+% =============================================================================
+
+\begin{document}
+
+\maketitle
+
+% =============================================================================
+% ABSTRACT
+% =============================================================================
+
+\input{sections/00_abstract}
+
+% =============================================================================
+% SECTIONS
+% =============================================================================
+
+\input{sections/01_introduction}
+
+\input{sections/02_related_work}
+
+\input{sections/03_methods_compressed}
+
+\input{sections/04_architecture}
+
+\input{sections/05_results}
+
+\input{sections/06_discussion}
+
+\input{sections/07_conclusion}
+
+% =============================================================================
+% REFERENCES
+% =============================================================================
+
+\input{bibliography}
+
+% =============================================================================
+% APPENDIX (optional)
+% =============================================================================
+
+\appendix
+
+\input{sections/08_appendix_reproducibility}
+
+\end{document}

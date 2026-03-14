@@ -1,0 +1,89 @@
+% Section 4: Architecture Choice - CIFAR-Adapted Stem
+% Compressed from 9 subsections → 3 for better flow
+
+\section{CIFAR-Adapted Stem Architecture}
+\label{sec:architecture_choice}
+
+A critical methodological decision shapes our experimental design: the choice between standard ImageNet ResNet architecture and CIFAR-adapted stems. This section justifies our use of CIFAR-adapted stems and demonstrates that this resolves the "undertrained baseline" issue identified in preliminary experiments.
+
+\subsection{Problem: ImageNet Stems Destroy Spatial Information}
+
+Standard ResNet architectures~\cite{he2016resnet} were designed for ImageNet (224×224 images) and use an aggressive stem:
+\begin{itemize}
+    \item 7×7 convolution with stride 2 (224×224 → 112×112)
+    \item 3×3 max pooling with stride 2 (112×112 → 56×56)
+    \item \textbf{Net effect:} 4× spatial reduction before first residual block
+\end{itemize}
+
+Applied to CIFAR images (32×32), this stem is catastrophic:
+\begin{itemize}
+    \item After conv: 32×32 → 16×16 (stride 2)
+    \item After maxpool: 16×16 → 8×8 (stride 2)
+    \item \textbf{Net effect:} From 32×32 pixels to 8×8 feature maps, destroying fine-grained spatial information
+\end{itemize}
+
+This aggressive downsampling creates capacity-starved models that cannot match published baselines, regardless of training recipe quality.
+
+\textbf{CIFAR-adapted stems} preserve spatial resolution by replacing the aggressive ImageNet stem with a gentler entry:
+\begin{itemize}
+    \item \textbf{Convolution:} 3×3 with stride 1 (not 7×7 stride 2)
+    \item \textbf{No maxpool:} Omit the 3×3 maxpool entirely
+    \item \textbf{Net effect:} 32×32 → 32×32 (no spatial reduction)
+\end{itemize}
+
+This is \textbf{standard practice} in CIFAR literature: \texttt{kuangliu/pytorch-cifar}~\cite{pytorch_cifar_kuangliu} (31k+ GitHub stars), \texttt{weiaicunzai/pytorch-cifar100}~\cite{pytorch_cifar100_weiaicunzai}, and the original ResNet paper~\cite{he2016resnet} all acknowledge CIFAR requires architectural adaptation. Our experiments use CIFAR-adapted stems throughout via the \texttt{--use-cifar-stem} flag, ensuring all models (FP32, FP32+KD, BitNet, BitNet+Recipe) use the same architectural foundation.
+
+\subsection{Empirical Validation: CIFAR-Adapted Stems Recover 6-17 Percentage Points}
+
+Table~\ref{tab:stem_comparison} compares FP32 ResNet-18 baselines with standard vs CIFAR-adapted stems, using identical training configurations (200 epochs, SGD, cosine schedule, basic augmentation).
+
+\begin{table}[h]
+\centering
+\caption{Impact of stem architecture on FP32 ResNet-18 baselines. CIFAR-adapted stems recover 6-17 percentage points, matching published results.}
+\label{tab:stem_comparison}
+\begin{tabular}{lccc}
+\toprule
+Dataset & Standard Stem & CIFAR-Adapted Stem & Published \\
+\midrule
+CIFAR-10  & 88.89\% & \textbf{95.83\%} & ~94-96\%~\cite{pytorch_cifar_kuangliu} \\
+CIFAR-100 & 62.40\% & \textbf{79.58\%} & ~76-79\%~\cite{pytorch_cifar100_weiaicunzai} \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize Improvement: +6.94\% (CIFAR-10), +17.18\% (CIFAR-100)}
+\end{tabular}
+\end{table}
+
+The stem modification recovers substantial accuracy across all three datasets. CIFAR-10 improves from 88.89\% to 95.83\% (+6.94\%), now matching the published ~94-96\% range. CIFAR-100 shows even larger gains, from 62.40\% to 79.58\% (+17.18\%), aligning with published ~76-79\% results. Tiny-ImageNet follows the same pattern, improving from 54.85\% to 67.83\% (+12.98\%), consistent with literature reports for this resolution.
+
+This architectural fix resolves the "undertrained FP32 baseline" critique without requiring stronger training recipes (300 epochs, advanced augmentation, etc.). The baselines are not undertrained—they were architecturally mismatched to the task.
+
+\subsection{Implementation and Implications for Quantization}
+
+\textbf{Implementation:} All experiments use CIFAR-adapted stems via:
+\begin{verbatim}
+python -m experiments.train --use-cifar-stem \
+    --model resnet18 --dataset cifar10
+\end{verbatim}
+
+The \texttt{--use-cifar-stem} flag modifies the stem in \texttt{experiments/models/factory.py}:
+\begin{verbatim}
+if use_cifar_stem:
+    model.conv1 = nn.Conv2d(3, 64, kernel_size=3,
+                             stride=1, padding=1, bias=False)
+    model.maxpool = nn.Identity()  # Remove maxpool
+\end{verbatim}
+
+\textbf{Fair comparison baseline:} All prior CIFAR quantization work uses CIFAR-adapted stems implicitly (via \texttt{pytorch-cifar} implementations). Comparing our ternary results to standard-stem FP32 baselines would be an apples-to-oranges comparison. With matched architectures, we isolate the quantization penalty.
+
+\textbf{Honest quantization gaps:} Properly-trained FP32 baselines (79.58\% CIFAR-100) establish a higher bar than weak baselines (62.40\%). Our ternary gaps (4.3-7.5\%) are larger than they would appear against weak baselines, but this reflects the true quantization penalty.
+
+For example, on CIFAR-100:
+\begin{itemize}
+    \item Against weak FP32 (62.40\%): BitNet+Recipe 63.40\% = +1.0\% "exceeds FP32" (misleading)
+    \item Against proper FP32 (79.58\%): BitNet+Recipe 74.22\% = 5.36\% gap (honest)
+\end{itemize}
+
+We choose honesty. Our results use CIFAR-adapted stems for all models, establishing proper baselines and reporting true quantization penalties.
+
+\textbf{Generalization to Tiny-ImageNet (64×64):} We apply the same principle to Tiny-ImageNet: 3×3 conv stride 1, no maxpool, preserving 64×64 → 64×64 spatial resolution. This is justified by image resolution: 64×64 is closer to CIFAR's 32×32 than ImageNet's 224×224. Our FP32 baselines (67.83\% ResNet-18, 71.77\% ResNet-50) align with published results~\cite{tiny_imagenet_benchmark}, validating our architectural choice.
+
+\textbf{Summary:} CIFAR-adapted stems are (1) standard practice in CIFAR literature, (2) empirically validated (our FP32 baselines match published results), (3) necessary for fair comparison (all models use matched architectures), and (4) applied consistently (all 135 experiments use \texttt{--use-cifar-stem}). This architectural foundation ensures our quantization findings reflect true ternary penalties, not architectural mismatches.

@@ -1,0 +1,20 @@
+\begin{table}[h]
+\centering
+\caption{Knowledge distillation effectiveness: FP32 vs ternary students.
+KD benefits scale with task difficulty for FP32 networks, but ternary networks show consistent degradation due to capacity constraints.}
+\label{tab:kd_results}
+\begin{tabular}{lcccccc}
+\toprule
+& \multicolumn{2}{c}{CIFAR-10} & \multicolumn{2}{c}{CIFAR-100} & \multicolumn{2}{c}{Tiny-ImageNet} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+Student & Baseline & +KD & Baseline & +KD & Baseline & +KD \\
+\midrule
+FP32 ResNet-18 & 96.07 & 95.59 & 79.14 & \textbf{80.03} & 67.04 & \textbf{68.61} \\
+Benefit & \multicolumn{2}{c}{\color{red}-0.48\%} & \multicolumn{2}{c}{+0.89\%} & \multicolumn{2}{c}{+1.57\%} \\
+\midrule
+BitNet ResNet-18 & 94.64 & 93.73 & 74.93 & 72.85 & 62.10 & 59.03 \\
+Benefit & \multicolumn{2}{c}{\color{red}-0.91\%} & \multicolumn{2}{c}{\color{red}-2.08\%} & \multicolumn{2}{c}{\color{red}-3.07\%} \\
+\bottomrule
+\multicolumn{7}{l}{\footnotesize Avg over 3 seeds (42, 123, 456). Setup: T=4.0, $\alpha$=0.9, FP32 ResNet-18 teachers (seed 42).}
+\end{tabular}
+\end{table}

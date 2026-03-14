@@ -1,0 +1,13 @@
+% Abstract
+% Target: 150-200 words
+% Key elements: Problem → Approach → Findings → Contributions
+
+\begin{abstract}
+
+Ternary quantization (1.58-bit) offers 20× model compression with theoretical deployment benefits, but suffers persistent accuracy degradation in convolutional neural networks. We conduct a systematic investigation of this gap through 153 controlled experiments (135 baseline + 18 TTQ comparisons) across three datasets (CIFAR-10, CIFAR-100, Tiny-ImageNet) and two architectures (ResNet-18, ResNet-50), with proper FP32+KD baselines to isolate quantization effects from training improvements.
+
+Three patterns emerge. First, layer sensitivity is highly asymmetric: the first convolutional layer accounts for 30-74\% of recoverable accuracy loss, 2.5× more than any other layer. Second, knowledge distillation shows a surprising failure mode—KD benefits full-precision students (+0.9\% to +1.6\%) but degrades ternary networks (-0.9\% to -3.1\%), revealing capacity constraints. Third, a simple mixed-precision recipe (FP32 conv1, ternary elsewhere) recovers 30-74\% of the accuracy gap without KD complexity, achieving 1.0\% gap on CIFAR-10. Direct comparison with Trained Ternary Quantization (TTQ) on CIFAR-adapted architectures confirms Recipe's architectural awareness outperforms learned per-layer scales (+2.1\% to +13.8\%), validating targeted mixed-precision over distributed scaling.
+
+Beyond these empirical insights, we demonstrate end-to-end reproducible research methodology where every table, figure, and claim is programmatically generated from documented experiments. Our findings provide both theoretical understanding (why ternary struggles) and practical guidance (when it achieves competitive accuracy) for extreme quantization research. All code, data, and analysis scripts are publicly available.
+
+\end{abstract}

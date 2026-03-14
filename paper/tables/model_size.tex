@@ -1,0 +1,18 @@
+\begin{table}[h]
+\centering
+\caption{Model size comparison. FP32 conv1 adds only 0.007 MB (0.3\% overhead) to compressed model.}
+\label{tab:model_size}
+\begin{tabular}{lccc}
+\toprule
+Configuration & Params (M) & Size (MB) & Compression \\
+\midrule
+ResNet-18 FP32 & 11.17 & 44.68 & 1.0$\times$ \\
+ResNet-18 BitNet (full) & 11.17 & 2.21 & 20.2$\times$ \\
+ResNet-18 BitNet + FP32 conv1 & 11.17 & 2.22 & 20.1$\times$ \\
+\midrule
+ResNet-50 FP32 & 23.52 & 94.08 & 1.0$\times$ \\
+ResNet-50 BitNet (full) & 23.52 & 4.66 & 20.2$\times$ \\
+ResNet-50 BitNet + FP32 conv1 & 23.52 & 4.67 & 20.2$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}

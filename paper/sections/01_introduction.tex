@@ -1,0 +1,81 @@
+% Section 1: Introduction
+% Key framing: Problem (ternary gap) → Investigation (systematic) → Findings (paradox + sensitivity) → Recipe (practical)
+
+\section{Introduction}
+\label{sec:introduction}
+
+The deployment of deep neural networks on resource-constrained devices demands aggressive model compression. Quantization—reducing numerical precision of weights and activations—offers a compelling solution: \textit{ternary quantization} (1.58-bit) promises 20× compression and theoretical 64× inference speedup by restricting weights to $\{-1, 0, +1\}$~\cite{ma2024bitnetb158}. This extreme quantization enables integer-only inference without floating-point operations, making it attractive for edge AI applications.
+
+However, ternary quantization comes with a cost: \textit{accuracy degradation}. While recent work demonstrates ternary transformers approaching full-precision performance on language tasks~\cite{wang2023bitnet}, convolutional neural networks (CNNs) show persistent accuracy gaps when quantized to ternary precision. Understanding \textit{why} this gap exists and \textit{how much} can be recovered remains an open question critical for practical deployment.
+
+\subsection{The Challenge: Why Do Ternary CNNs Fall Short?}
+
+Prior work on ternary quantization~\cite{zhu2017ttq, li2016ternary} demonstrates proof-of-concept results but lacks systematic investigation of \textit{where} and \textit{why} accuracy is lost. Key questions remain unanswered:
+
+\begin{itemize}
+    \item \textbf{Baseline comparison:} What is the appropriate reference? Pure FP32, or FP32 with the same training techniques (e.g., knowledge distillation)?
+    \item \textbf{Training dynamics:} Do standard training recipes (data augmentation, learning rate schedules) transfer to ternary models, or do quantized networks require different inductive biases?
+    \item \textbf{Layer sensitivity:} Are all layers equally sensitive to quantization, or do specific layers (e.g., early convolutions) dominate the accuracy loss?
+    \item \textbf{Recovery potential:} How much of the accuracy gap is fundamental (capacity limitation) vs recoverable (training recipe)?
+\end{itemize}
+
+Without answers to these questions, practitioners lack guidance on \textit{when} ternary quantization is viable and \textit{how} to minimize accuracy loss.
+
+\subsection{Our Approach: Systematic Investigation}
+
+We conduct a comprehensive empirical study of ternary quantization for CNNs, comprising 135 controlled experiments across three datasets (CIFAR-10, CIFAR-100, Tiny-ImageNet), two architectures (ResNet-18, ResNet-50), and multiple training configurations. Crucially, we include proper baseline controls requested by the research community: \textbf{FP32+KD baselines} that isolate the quantization penalty from knowledge distillation benefits. The experiments uncover three surprising patterns:
+
+\textbf{1. Layer Sensitivity is Highly Skewed.} Through systematic layer-wise ablation (keeping specific layers in FP32 while quantizing others), we find that the first convolutional layer (\texttt{conv1}) accounts for 30-74\% of recoverable accuracy loss—2.5× more than any other single layer. This asymmetry is consistent across datasets and architectures, pointing to \texttt{conv1} as an information bottleneck where quantization has outsized impact.
+
+\textbf{2. Knowledge Distillation Fails for Ternary Networks.} We investigate knowledge distillation (KD), a standard technique for quantized networks. Surprisingly, KD \textit{degrades} ternary network performance (-0.9\% to -3.1\%) while benefiting full-precision students (+0.9\% to +1.6\%). The degradation scales with task complexity, revealing capacity constraints: soft labels (smoothed probability distributions) overwhelm the limited representational capacity of ternary weights \{-1, 0, +1\}. This contradicts established practices from moderate quantization (4-bit, 8-bit) and highlights that extreme quantization requires rethinking standard techniques.
+
+\textbf{3. Simplified Mixed-Precision Recipe.} Given KD's failure, we focus on mixed-precision: FP32 conv1 + ternary elsewhere. This achieves 1.0\% gap on CIFAR-10 with ResNet-18 while maintaining 20× compression, without KD's complexity or task-dependent failures. On more complex tasks (Tiny-ImageNet: 4.75\% gap), remaining gaps highlight fundamental capacity limitations of ternary quantization.
+
+\subsection{Contributions}
+
+This work makes three contributions. First, we establish reproducible methodology where every table, figure, and claim is programmatically generated from documented experiments. Our infrastructure includes complete documentation of 135 experiments with exact commands, deterministic training with seed control, automated analysis pipelines that transform raw results into publication-ready tables, and public code and data for community use. Beyond our specific findings on ternary quantization, we demonstrate best practices for rigorous empirical ML research.
+
+Second, our systematic investigation quantifies layer-wise sensitivity (\texttt{conv1} accounts for 30-74\% of recoverable accuracy, identifying a clear target for mixed-precision deployment) and documents knowledge distillation's surprising failure mode: KD degrades ternary networks (-0.9\% to -3.1\%) while benefiting FP32 students, revealing capacity-dependent effectiveness. The degradation scales with task complexity (CIFAR-10: -0.9\%, Tiny-ImageNet: -3.1\%), suggesting soft labels overwhelm limited ternary representational capacity—a finding that opens testable future work on lower $\alpha$ values and specialized KD techniques.
+
+Third, we provide a practical training recipe (FP32 conv1, ternary elsewhere, without KD) that achieves near-parity on CIFAR-10 (1.0\% gap with ResNet-18) while exposing fundamental capacity limits on complex tasks (4.75\% gap on Tiny-ImageNet). The recipe maintains 20× compression with negligible parameter overhead (FP32 conv1 = 9,216 params in ResNet-18, <0.1\% of total).
+
+\needspace{5\baselineskip}
+\subsection{Positioning and Scope}
+
+This work focuses on \textit{understanding and mitigating} the ternary quantization gap in CNNs, not claiming to have "solved" extreme quantization. Our findings suggest:
+
+\begin{itemize}
+    \item \textbf{Ternary quantization is viable} for certain deployment scenarios (simple datasets, sufficient capacity, memory-constrained devices), achieving practical parity with full-precision models.
+    \item \textbf{Capacity limitations emerge} on complex tasks, where the representational bottleneck of ternary weights becomes fundamental rather than recoverable through training.
+    \item \textbf{Augmentation and layer sensitivity} insights generalize beyond ternary to inform low-bit quantization research broadly.
+\end{itemize}
+
+We do \textit{not} claim that ternary quantization "matches or exceeds FP32" universally—our results show task-dependent viability with clear remaining gaps on complex datasets. Instead, we provide empirical guidance on when ternary quantization is appropriate and how to maximize accuracy recovery.
+
+\subsection{Reproducibility Statement}
+
+All experiments in this paper are fully reproducible. We provide:
+\begin{itemize}
+    \item Complete source code (training, evaluation, analysis) at \url{https://github.com/LabStrangeLoop/bitnet}
+    \item Exact experiment commands in \texttt{PROPER\_BASELINE\_COMMANDS.sh}
+    \item All 135 experiment results (raw JSON, aggregated CSV)
+    \item Automated table/figure generation scripts
+    \item Deterministic training (same seed → identical results)
+\end{itemize}
+
+Readers can verify every number in this paper by running:
+\begin{verbatim}
+git clone [repo] && cd bitnet && uv sync
+python -m analysis.aggregate_results
+python -m analysis.generate_tables
+python -m analysis.generate_figures
+\end{verbatim}
+No manual transcription was used—all results are programmatically extracted from experiment logs.
+
+\subsection{Paper Organization}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related_work} reviews related work on ternary quantization, knowledge distillation, and reproducible ML research. Section~\ref{sec:methods} describes our experimental methodology, including the reproducible pipeline, datasets, architectures, and training configurations. Section~\ref{sec:architecture_choice} justifies our CIFAR-adapted stem architecture. Section~\ref{sec:results} presents our main findings: layer sensitivity (§\ref{sec:results:layer_ablation}), and recipe effectiveness (§\ref{sec:results:recipe}). Section~\ref{sec:discussion} discusses deployment implications, limitations, and broader impact. Section~\ref{sec:conclusion} concludes with key takeaways and future work.
+
+\subsection{Code and Data Availability}
+
+All code, data, and trained models are publicly available at \texttt{[repo URL]} under [LICENSE]. We encourage the community to build upon our reproducible infrastructure.

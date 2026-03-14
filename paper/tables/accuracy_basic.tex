@@ -1,0 +1,17 @@
+\begin{table}[h]
+\centering
+\caption{Test accuracy (\%) for standard, BitNet, and TTQ models (basic augmentation)}
+\label{tab:accuracy_basic}
+\begin{tabular}{llcccccc}
+\toprule
+Model & Dataset & Std (mean) & Std (std) & Bit (mean) & Bit (std) & TTQ (mean) & TTQ (std) \\
+\midrule
+resnet18 & CIFAR-10 & 95.83 & 0.29 & 94.19 & 0.52 & 92.95 & 0.12 \\
+resnet18 & CIFAR-100 & 79.58 & 0.50 & 73.89 & 1.16 & 75.14 & 0.25 \\
+resnet18 & Tiny-IN & 67.83 & 0.88 & 60.56 & 1.71 & 61.06 & 0.05 \\
+resnet50 & CIFAR-10 & 96.39 & 0.17 & 95.63 & 0.19 & 90.44 & 0.39 \\
+resnet50 & CIFAR-100 & 80.71 & 0.10 & 76.34 & 0.96 & 73.36 & 0.14 \\
+resnet50 & Tiny-IN & 71.77 & 0.12 & 65.00 & 0.61 & 48.07 & 0.50 \\
+\bottomrule
+\end{tabular}
+\end{table}

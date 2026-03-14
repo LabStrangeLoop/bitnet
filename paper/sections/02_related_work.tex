@@ -1,0 +1,89 @@
+% Section 2: Related Work
+% Survey of ternary quantization, KD, reproducibility, and related topics
+
+\needspace{5\baselineskip}
+\section{Related Work}
+\label{sec:related_work}
+
+Our work builds on three research areas: ternary quantization for neural networks, knowledge distillation for compressed models, and reproducible ML research methodology.
+
+\subsection{Binary and Ternary Quantization}
+
+\textbf{Binary networks:} BinaryConnect~\cite{courbariaux2015binaryconnect} pioneered binary weight training using the straight-through estimator (STE)~\cite{bengio2013estimating}, enabling gradient-based optimization despite discrete weights. XNOR-Net~\cite{rastegari2016xnornet} extended this to binary activations, achieving 58× speedup on CPUs but with significant accuracy loss (~10-15\% on ImageNet). BWN (Binary Weight Networks)~\cite{rastegari2016xnornet} showed that keeping activations in full precision while binarizing weights reduces the gap. DoReFa-Net~\cite{zhou2016dorefa} systematically studied low-bit quantization for both weights and activations, establishing the practice of keeping first and last layers at higher precision.
+
+More recent work has substantially improved binary network accuracy: IR-Net~\cite{qin2020irnet} introduced information retention principles for both forward and backward passes, achieving 58.1\% ImageNet top-1 with ResNet-18. ReActNet~\cite{liu2020reactnet} achieved 69.4\% through generalized activation functions and distributional loss. BNext~\cite{guo2022bnext} reached 80.6\% ImageNet accuracy by combining modern training techniques (AdamW, 512 epochs) with architectural innovations, demonstrating that binary networks can approach FP32 performance at large scale with sufficient optimization.
+
+\textbf{Ternary networks:} Ternary Weight Networks (TWN)~\cite{li2016ternary} demonstrated that adding zero to the binary set $\{-1,+1\} \to \{-1,0,+1\}$ improves accuracy while maintaining efficient inference. Trained Ternary Quantization (TTQ)~\cite{zhu2017ttq} learned two asymmetric scaling factors per layer ($W^p$, $W^n$), achieving near-FP32—and sometimes improved—accuracy on CIFAR-10 ResNets. However, TTQ requires FP32 storage and multiplications for scales during inference, sacrificing deployment simplicity.
+
+Our work differs by using BitNet b1.58's simpler formulation (fixed $\{-1,0,+1\}$ without learned scales) and systematically studying what training techniques \textit{don't} work (heavy augmentation) alongside what does (targeted mixed-precision + KD). We provide the first systematic quantification showing conv1 accounts for 30-74\% of recoverable accuracy, validating established practice with empirical rigor.
+
+\subsection{BitNet for Vision}
+
+BitNet~\cite{wang2023bitnet} introduced 1-bit quantization for transformers, demonstrating that language models can achieve competitive performance with extreme quantization. BitNet b1.58~\cite{ma2024bitnetb158} refined this to ternary weights ($\{-1,0,+1\}$), matching FP16 LLM performance on various benchmarks while enabling 20× compression and theoretical 64× speedup through integer-only arithmetic.
+
+For vision, Nielsen and Schneider-Kamp~\cite{nielsen2024bitnetreloaded} applied BitNet b1.58 to small custom CNNs (100K-2.2M parameters) on CIFAR-10, achieving 71.47\% accuracy after only 10 epochs of training. BD-Net~\cite{kim2025bdnet} applied 1.58-bit quantization specifically to MobileNet's depthwise convolutions, reporting improvements over binary baselines.
+
+However, no prior work has systematically studied BitNet b1.58 on standard CNN architectures (ResNet) with full training schedules, proper baseline controls (FP32+KD), and investigation of training dynamics (augmentation effects). Our work fills this gap with 135 controlled experiments and complete reproducibility.
+
+\subsection{Mixed-Precision Quantization}
+
+Rather than uniform quantization across all layers, mixed-precision approaches assign different bit-widths per layer based on sensitivity analysis. HAQ (Hardware-Aware Quantization)~\cite{wang2019haq} uses reinforcement learning to learn per-layer bit-widths optimized for specific hardware constraints. HAWQ (Hessian-Aware Quantization)~\cite{dong2019hawq} and HAWQ-V2~\cite{dong2020hawqv2} use second-order information (Hessian eigenvalues) to identify quantization-sensitive layers, achieving 4-bit ImageNet accuracy matching FP32.
+
+While these methods perform expensive architecture search to discover optimal bit-width assignments, our recipe uses a simple fixed assignment (FP32 conv1, ternary elsewhere) motivated by our layer ablation findings. This avoids search costs while achieving strong results (0.35-5\% gaps), demonstrating that domain knowledge (conv1 sensitivity) can substitute for automated search in some settings.
+
+\needspace{5\baselineskip}
+\subsection{Knowledge Distillation for Quantization}
+
+Knowledge distillation (KD)~\cite{hinton2015distilling} transfers knowledge from a larger teacher to a smaller student via soft labels—probability distributions smoothed by temperature $T$. For quantized models, distillation provides complementary benefits to quantization-aware training.
+
+QKD (Quantization-aware Knowledge Distillation)~\cite{kim2019qkd} showed that naive KD can hurt quantized models when the capacity gap between teacher and student is too large, and proposed teacher assistants as an intermediate step. SQAKD (Self-supervised Quantization-Aware Knowledge Distillation)~\cite{zhao2024sqakd} recently combined self-supervised learning with KD specifically for quantization-aware training, achieving improved low-bit performance.
+
+Feature-level distillation (matching intermediate activations) can provide 5-20\% additional improvement over logit-only KD for extremely quantized networks~\cite{elthakeb2020dcq}. RelaxLoss~\cite{kim2021relaxloss} showed that relaxing hard label constraints during quantized training improves convergence. Our work uses standard soft-label distillation ($T=4$, $\alpha=0.9$), which works out-of-the-box without task-specific tuning, leaving feature distillation as promising future work.
+
+\subsection{Data Augmentation for CNNs}
+
+Data augmentation has become standard practice for training CNNs, with increasingly sophisticated strategies. AutoAugment~\cite{cubuk2019autoaugment} used reinforcement learning to discover dataset-specific augmentation policies. RandAugment~\cite{cubuk2020randaugment} simplified this with a single magnitude parameter, achieving comparable results. Cutout~\cite{devries2017cutout} randomly masks rectangular regions during training, acting as regularization. MixUp~\cite{zhang2018mixup} blends training examples and their labels, improving generalization.
+
+These techniques consistently improve full-precision models, leading to the conventional wisdom that "more augmentation = better generalization." Our finding that heavy augmentation \textit{widens} the quantization gap challenges this assumption, revealing that augmentation effectiveness depends on model capacity. This has implications for training any capacity-constrained model, not just quantized networks.
+
+\subsection{Reproducibility in ML Research}
+
+ML's replication crisis is well-documented~\cite{gundersen2018reproducibility,hutson2018ai}. Papers often lack sufficient detail to reproduce results, report selected best runs without documenting variance, or omit critical hyperparameters. Recent efforts address this through better reporting standards (ML Code Completeness Checklist~\cite{dodge2019mlchecklist}), reproducibility checklists at conferences (NeurIPS, ICML), and platforms for sharing artifacts (Papers With Code, Hugging Face).
+
+Our work contributes a \textit{methodology example}: an end-to-end pipeline where code generates experiments, experiments produce data, and data programmatically generates paper artifacts (tables, figures). This eliminates transcription errors, selective reporting, and missing details. We hope this serves as a template for rigorous empirical ML research.
+
+\subsection{Layer-wise Quantization Sensitivity}
+
+The observation that early and late layers are more sensitive to quantization dates to early binary network work. XNOR-Net~\cite{rastegari2016xnornet} and DoReFa-Net~\cite{zhou2016dorefa} both keep first and last layers in full precision, motivated by error propagation concerns and the observation that these layers "constitute a very small portion of overall computation."
+
+However, prior work provides limited quantitative analysis of \textit{how much} each layer contributes to accuracy loss. HAQ and HAWQ methods search for per-layer bit-widths but don't isolate individual layer contributions. Our systematic layer ablation (Section~\ref{sec:results:layer_ablation}) quantifies that conv1 accounts for 30-74\% of recoverable accuracy—2.5× more than any other single layer—despite comprising only 0.08\% of parameters. This validates the established practice with empirical rigor and motivates our simple mixed-precision recipe.
+
+\subsection{Quantization for Edge Deployment}
+
+Extreme quantization's primary motivation is edge deployment, where memory and compute are constrained. TensorFlow Lite~\cite{tflite} and PyTorch Mobile~\cite{pytorch_mobile} provide frameworks for deploying quantized models on mobile devices. Specialized hardware accelerators (Edge TPU, Qualcomm Neural Processing SDK) optimize low-bit inference through custom kernels.
+
+BitBLAS~\cite{bitblas} provides optimized kernels for ternary matrix multiplication, achieving near-theoretical speedups. However, real-world deployment requires more than just fast kernels—it requires validated accuracy-efficiency trade-offs. Our work provides empirical guidance on when ternary quantization achieves acceptable accuracy (0.35-5\% gaps on CIFAR-scale) versus when gaps are prohibitive (9.80\% on complex tasks with small models).
+
+\subsection{CIFAR-Adapted Architectures}
+
+Standard ImageNet architectures (ResNet, VGG) use aggressive stems (7×7 stride-2 convolution + maxpool) that destroy spatial information on small 32×32 CIFAR images. The CIFAR research community has long used adapted stems (3×3 stride-1, no maxpool) to preserve resolution, as documented in widely-used repositories:
+\begin{itemize}
+    \item \texttt{kuangliu/pytorch-cifar}~\cite{pytorch_cifar_kuangliu}: 31k+ stars, canonical CIFAR implementation
+    \item \texttt{weiaicunzai/pytorch-cifar100}~\cite{pytorch_cifar100_weiaicunzai}: Standard CIFAR-100 benchmarks
+\end{itemize}
+
+He et al.~\cite{he2016resnet} acknowledged in the original ResNet paper that CIFAR requires architectural adaptation. Our contribution is not discovering this practice but \textit{demonstrating its critical importance for quantization research}: standard-stem baselines (62.40\% CIFAR-100) appear undertrained compared to published results (~77\%), but CIFAR-adapted baselines (79.58\%) match literature and establish proper quantization gap measurements.
+
+\subsection{Positioning of Our Work}
+
+Our work differs from prior ternary quantization research in four ways:
+
+\textbf{1. Proper baseline controls:} We include FP32+KD baselines to isolate quantization effects from training improvements, addressing a critical gap identified by reviewers. Most prior work compares quantized models to vanilla FP32 without matched training techniques.
+
+\textbf{2. Systematic investigation of failure modes:} Beyond reporting what works, we document what doesn't (heavy augmentation widens gaps 1.5-2.5×), providing actionable guidance for practitioners.
+
+\textbf{3. Reproducible methodology:} Our end-to-end pipeline (code → experiments → paper) eliminates transcription errors and selective reporting, demonstrating best practices for empirical ML research.
+
+\textbf{4. Honest evaluation:} We report true quantization penalties against proper baselines (FP32+KD), acknowledge remaining gaps (5.35-9.80\% on complex tasks), and provide clear deployment guidelines rather than overclaiming universal solutions.
+
+Our message is pragmatic: ternary quantization is viable for specific deployment scenarios (CIFAR-scale tasks, standard convolutions, FP32-capable hardware) but not a universal solution. Understanding where it works and where it fails enables informed deployment decisions.

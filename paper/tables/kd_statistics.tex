@@ -1,0 +1,14 @@
+\begin{table}[h]
+\centering
+\caption{Paired t-tests: BitNet vs BitNet+KD (Knowledge Distillation degradation)}
+\label{tab:kd_statistics}
+\begin{tabular}{llrrrrc}
+\toprule
+Model & Dataset & BitNet & +KD & $\Delta$ & $p$ & Cohen's $d$ \\
+\midrule
+resnet18 & CIFAR-10 & 94.64 & 93.73 & +0.91 & 0.0175* & 4.31 \\
+resnet18 & CIFAR-100 & 74.93 & 72.85 & +2.08 & 0.0133* & 4.96 \\
+\bottomrule
+\multicolumn{7}{l}{\footnotesize * $p < 0.05$} \\
+\end{tabular}
+\end{table}
