@@ -93,9 +93,9 @@ def measure_comparison(
     """
     Compare FP32 vs BitNet memory usage for a given configuration.
     """
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Measuring: {model_name}, batch={batch_size}, image_size={image_size}×{image_size}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     # FP32 model
     print("Creating FP32 model...")
@@ -136,9 +136,9 @@ def print_summary_table(results: list[dict]) -> None:
     """
     Print a summary table suitable for the paper.
     """
-    print(f"\n\n{'='*80}")
+    print(f"\n\n{'=' * 80}")
     print("SUMMARY TABLE (for paper)")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     print(f"{'Configuration':<40} {'FP32 Peak (MB)':>15} {'BitNet Peak (MB)':>16} {'Ratio':>8}")
     print("-" * 80)
@@ -220,9 +220,9 @@ def main() -> None:
     print_summary_table(results)
 
     # Key insights
-    print(f"\n\n{'='*80}")
+    print(f"\n\n{'=' * 80}")
     print("KEY INSIGHTS")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
     print("1. BitNet model parameters: ~16× smaller than FP32 (ternary weights)")
     print("2. BitNet training peak memory: Similar or HIGHER than FP32")
     print("3. Reason: FP32 gradients + STE overhead + activation memory")
