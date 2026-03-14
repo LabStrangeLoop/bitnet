@@ -1,23 +1,138 @@
-# 1.58-bit Neural Networks: A Systematic Comparison Study
+# 1.58-bit Convolutional Neural Networks: A Systematic Comparison Study
 
-[![CI](https://github.com/LabStrangeLoop/bitnet/actions/workflows/ci.yml/badge.svg)](https://github.com/LabStrangeLoop/bitnet/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+> Research reproducibility repository for TMLR submission
 
-Implementation of BitNet b1.58 (ternary weights {-1, 0, +1}) for convolutional neural networks, with systematic comparison against standard FP32 models.
+Implementation of BitNet b1.58 (ternary quantization) applied to ResNet architectures, with systematic analysis across 153 controlled experiments.
 
 Based on:
+
 - [BitNet: Scaling 1-bit Transformers](https://arxiv.org/abs/2310.11453)
 - [The Era of 1-bit LLMs](https://arxiv.org/abs/2402.17764)
 
-## Requirements
+---
+
+## Research Scope
+
+**Models:** ResNet-18 (11.17M params), ResNet-50 (23.52M params)
+
+**Datasets:** CIFAR-10, CIFAR-100, Tiny-ImageNet
+
+**Experiments:** 153 total across 6 phases
+
+**Compute:** 920 GPU-hours (reproducible with fixed seeds)
+
+---
+
+## Key Findings
+
+This work provides three main contributions:
+
+1. **Layer sensitivity is asymmetric:** First convolutional layer (conv1) accounts for 30-74% of the accuracy gap despite representing only 0.08% of parameters.
+
+2. **Knowledge distillation fails for ternary networks:** BitNet+KD performs 0.9-3.1% worse than BitNet alone, contradicting standard practice for compressed models.
+
+3. **Mixed-precision recipe:** FP32 conv1 + ternary remainder recovers 30-74% of accuracy gap with 20.2× compression maintained.
+
+**Representative results:**
+
+- CIFAR-10 (ResNet-18): 93.01% FP32 → 92.01% mixed-precision (1.00% gap)
+- CIFAR-100 (ResNet-18): 76.12% FP32 → 72.72% mixed-precision (3.40% gap)
+- Tiny-ImageNet (ResNet-18): 62.18% FP32 → 57.43% mixed-precision (4.75% gap)
+
+---
+
+## Quick Reproducibility Check (10 minutes)
+
+Regenerate all paper artifacts from pre-computed results:
+
+```bash
+./reproduce.sh
+```
+
+This will:
+
+1. Aggregate 153 experiment results
+2. Generate 12 LaTeX tables
+3. Generate 6 PDF figures
+4. Compile paper PDF (28 pages, ~550 KB)
+
+**Verification:** All tables/figures should match paper exactly.
+
+---
+
+## Experimental Design
+
+### Phase Structure (153 experiments)
+
+| Phase | Experiments | Description |
+|-------|------------|-------------|
+| 1. FP32 Baselines | 18 | Standard ResNet (3 seeds) |
+| 2. FP32+KD Control | 9 | Isolate KD benefit from quantization |
+| 3. BitNet Baselines | 18 | Full ternary quantization |
+| 4. BitNet + Recipe | 18 | Mixed-precision (FP32 conv1) |
+| 5. Statistical Power | 72 | Extended to n=10 seeds |
+| 6. TTQ Comparison | 18 | Validate against prior art |
+
+**Total:** 153 experiments, deterministic training (fixed seeds), programmatic analysis.
+
+### CIFAR-Adapted Stems
+
+**Critical methodological detail:** Standard ImageNet ResNet uses 7×7 stride-2 conv + maxpool, which destroys spatial information on small images (32×32 CIFAR, 64×64 Tiny-IN).
+
+**Our approach:** 3×3 stride-1 conv, no maxpool, preserving spatial resolution.
+
+**Impact:** CIFAR-adapted stem recovers +6.94% (CIFAR-10) and +17.18% (CIFAR-100) compared to ImageNet stem. This is standard practice in literature but critical for reproducibility.
+
+**⚠️ All CIFAR/Tiny-ImageNet experiments require `--use-cifar-stem` flag.**
+
+---
+
+## Full Experimental Reproduction (920 GPU-hours)
+
+To re-run all 153 experiments from scratch:
+
+**Requirements:**
+
+- 2× RTX 4090 or A100 GPUs
+- 50 GB disk space
+- 2-3 weeks wall-clock time
+
+**Commands:** See `EXPERIMENTS_REFERENCE.sh` for exact commands (all 153).
+
+**Deterministic training:**
+
+- Seeds: 42, 123, 456 (main experiments)
+- Extended: 789, 1011, 1213, 1415, 1617, 1819, 2021 (statistical power)
+- Bit-exact checkpoint MD5 hashes with fixed seeds
+
+---
+
+## Results Directory Structure
+
+```text
+results/
+├── raw/                  # 90 standard training experiments
+│   └── {dataset}/{model}/{version}_s{seed}/
+│       ├── config.json        # Training hyperparameters
+│       └── results.json       # Final metrics
+├── raw_kd/               # 63 knowledge distillation experiments
+└── processed/
+    └── aggregated.csv    # All 153 experiments aggregated
+```
+
+**Note on Phase 6 (TTQ):** TTQ comparison experiments are in `raw/` directory with `_ttq` suffix (18 additional experiments).
+
+See [`results/README.md`](results/README.md) for detailed naming conventions.
+
+---
+
+## Usage
+
+### Prerequisites
 
 - Python 3.11+
-- CUDA-capable GPU (tested on RTX A6000)
+- CUDA-capable GPU
 - [uv](https://github.com/astral-sh/uv) package manager
-
-## Installation
 
 ```bash
 git clone https://github.com/LabStrangeLoop/bitnet.git
@@ -25,12 +140,93 @@ cd bitnet
 uv sync
 ```
 
+### Single Experiment
+
+**⚠️ Important:** Always use `--use-cifar-stem` for CIFAR-10, CIFAR-100, and Tiny-ImageNet.
+
+```bash
+# Standard FP32 baseline
+uv run python -m experiments.train \
+    --model resnet18 --dataset cifar10 --epochs 200 --use-cifar-stem
+
+# BitNet (full ternary quantization)
+uv run python -m experiments.train \
+    --model resnet18 --dataset cifar10 --epochs 200 --use-cifar-stem --bit-version
+
+# Mixed-precision recipe (FP32 conv1 + ternary remainder)
+uv run python -m experiments.train \
+    --model resnet18 --dataset cifar10 --epochs 300 --use-cifar-stem \
+    --bit-version --ablation keep_conv1
+```
+
+### Layer-wise Ablation
+
+Investigate which layers contribute most to accuracy gap:
+
+```bash
+# Available ablation modes:
+#   none        - Full BitNet (all layers quantized)
+#   keep_conv1  - FP32 conv1 (recovers 30-74% of gap)
+#   keep_layer1 - FP32 first residual block
+#   keep_layer4 - FP32 last residual block
+#   keep_fc     - FP32 classifier only
+
+# Run ablation sweep
+uv run python -m experiments.sweep \
+    --models resnet18 --datasets cifar10 \
+    --ablations none keep_conv1 keep_layer1 keep_layer4 keep_fc
+```
+
+**Key insight from paper:** conv1 contributes disproportionately (30-74% of accuracy recovery) despite being only 0.08% of parameters.
+
+### FP32+KD Control Experiments
+
+To isolate KD benefit from quantization penalty:
+
+```bash
+# FP32 teacher
+uv run python -m experiments.train \
+    --model resnet18 --dataset cifar10 --epochs 200 --use-cifar-stem
+
+# FP32 student (no quantization, only KD)
+uv run python -m experiments.train_kd \
+    --model resnet18 --dataset cifar10 --epochs 200 --use-cifar-stem \
+    --teacher-path results/raw/cifar10/resnet18/std_s42/best_model.pth
+
+# BitNet student (quantization + KD)
+uv run python -m experiments.train_kd \
+    --model resnet18 --dataset cifar10 --epochs 200 --use-cifar-stem \
+    --bit-version \
+    --teacher-path results/raw/cifar10/resnet18/std_s42/best_model.pth
+```
+
+**Finding:** BitNet+KD underperforms BitNet-only by 0.9-3.1%, suggesting gradient mismatch issues.
+
+### Analysis Pipeline
+
+After experiments complete:
+
+```bash
+# Aggregate all 153 experiments
+uv run python -m analysis.aggregate_results
+
+# Generate paper tables (12 LaTeX files)
+uv run python -m analysis.generate_tables
+
+# Generate paper figures (6 PDFs)
+uv run python -m analysis.generate_figures
+```
+
+---
+
 ## Datasets
 
 ### CIFAR-10/100
+
 Downloaded automatically on first run.
 
-### ImageNet-1k
+### Tiny-ImageNet
+
 Requires HuggingFace authentication:
 
 1. Create account at [huggingface.co](https://huggingface.co)
@@ -46,265 +242,71 @@ uv run python -c "from huggingface_hub import login; login()"
 uv run python scripts/download_imagenet.py --data-dir ./data
 ```
 
-## Usage
-
-### Single Experiment
-
-```bash
-# Standard ResNet18 on CIFAR-10
-uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 200
-
-# BitNet version
-uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 200 --bit-version
-
-# Quiet mode (suppress progress bars and per-epoch logs, useful for batch runs)
-uv run python -m experiments.train --model resnet18 --dataset cifar10 --epochs 200 --quiet
-```
-
-### Full Experiment Sweep
-
-```bash
-# Dry run (shows commands without executing)
-uv run python -m experiments.sweep --dry-run
-
-# Run all experiments (paper uses 2 models × 3 datasets × 2 versions × 3 seeds)
-# Uses --quiet mode automatically, shows compact progress
-uv run python -m experiments.sweep --models resnet18 resnet50
-
-# Run subset
-uv run python -m experiments.sweep --models resnet18 resnet50 --datasets cifar10 cifar100
-
-# With different augmentation levels
-uv run python -m experiments.sweep --augments basic randaug cutout full
-
-# With different optimizer (AdamW instead of default SGD)
-uv run python -m experiments.sweep --optimizer adamw --output-dir results/raw_adamw
-
-# Longer training (400 epochs instead of 200)
-uv run python -m experiments.sweep --epochs 400 --output-dir results/raw_400ep
-
-# Ctrl+C shows summary of completed/skipped/failed experiments
-```
-
-### Layer-wise Ablation
-
-Investigate which layers contribute most to the accuracy gap by keeping specific layers in FP32:
-
-```bash
-# Single ablation experiment (keep first conv in FP32, rest quantized)
-uv run python -m experiments.train --model resnet18 --dataset cifar10 \
-    --bit-version --ablation keep_conv1
-
-# Available ablation modes:
-#   none        - Full BitNet (all layers quantized)
-#   keep_conv1  - Keep first conv layer in FP32
-#   keep_layer1 - Keep first residual block in FP32
-#   keep_layer4 - Keep last residual block in FP32
-#   keep_fc     - Keep classifier in FP32
-
-# Sweep all ablation modes
-uv run python -m experiments.sweep --models resnet18 --datasets cifar10 \
-    --ablations none keep_conv1 keep_layer1 keep_layer4 keep_fc
-```
-
-### Monitoring with TensorBoard
-
-```bash
-# Local machine
-uv run tensorboard --logdir results/raw
-
-# Remote server (accessible from browser)
-uv run tensorboard --logdir results/raw --bind_all --port 6006
-```
-
-### Analysis
-
-After experiments complete:
-
-```bash
-# Aggregate results
-uv run python -m analysis.aggregate_results
-
-# Generate tables and figures
-uv run python -m analysis.generate_tables
-uv run python -m analysis.generate_figures
-```
-
-### Results Directory Structure
-
-Experiments are organized into two directories:
-
-- **`results/raw/`**: 72 standard training experiments (FP32 baselines, BitNet baselines, ablations)
-- **`results/raw_kd/`**: 63 knowledge distillation experiments (FP32+KD, BitNet+KD, recipe variants)
-
-See [`results/README.md`](results/README.md) for detailed structure and naming conventions.
-
-**Quick analysis**:
-
-```bash
-# Aggregate all 135 experiments into DataFrame
-uv run python -m analysis.aggregate_results
-
-# Generate paper tables and figures
-uv run python -m analysis.generate_tables
-uv run python -m analysis.generate_figures
-```
+---
 
 ## Supported Models
 
-| Model | timm name |
-|-------|-----------|
-| ResNet-18 | `resnet18` |
-| ResNet-50 | `resnet50` |
+| Model     | Parameters | timm name  |
+|-----------|------------|------------|
+| ResNet-18 | 11.17M     | `resnet18` |
+| ResNet-50 | 23.52M     | `resnet50` |
 
-**Note:** The codebase supports additional architectures (VGG-16, MobileNetV2, EfficientNet-B0, ConvNeXt) via timm integration, but the paper focuses on ResNet-18 and ResNet-50 for systematic comparison across 153 experiments.
+**Note:** Additional architectures (VGG-16, MobileNetV2, EfficientNet-B0, ConvNeXt) are implemented via timm but not evaluated in the paper.
 
-## Project Structure
-
-```
-bitnet/
-├── bitnet/
-│   ├── nn/                      # 1.58-bit layer implementations
-│   │   ├── quantization.py      # Shared quantization functions
-│   │   ├── bitlinear.py         # BitLinear layer
-│   │   └── bitconv2d.py         # BitConv2d layer
-│   ├── layer_swap.py            # Full model quantization
-│   └── layer_swap_selective.py  # Selective quantization (ablation)
-├── experiments/
-│   ├── train.py                 # Training script
-│   ├── sweep.py                 # Experiment runner
-│   ├── config.py                # Configuration and enums
-│   └── datasets/                # Dataset loaders
-├── analysis/                    # Result analysis and paper generation
-├── results/raw/                 # Experiment outputs
-└── paper/                       # LaTeX paper and generated tables/figures
-```
-
-## Development
-
-```bash
-uv sync --group dev
-uv run python -m pre_commit install
-uv run ruff check .
-uv run mypy .
-```
+---
 
 ## Documentation
 
-Root-level documentation files for reviewers and reproducibility:
+For detailed information, see:
 
-- **[README.md](README.md)** - This file; main project documentation
-- **[reproduce.sh](reproduce.sh)** - Quick validation script (10 minutes)
-- **[EXPERIMENTS_REFERENCE.sh](EXPERIMENTS_REFERENCE.sh)** - Full reproduction commands (920 GPU-hours)
-- **[METHODOLOGY.md](METHODOLOGY.md)** - Experimental design and phase structure
-- **[PROJECT_SETUP.md](PROJECT_SETUP.md)** - Quick start guide and project structure
-- **[REPRODUCE.md](REPRODUCE.md)** - Detailed reproduction guide
-- **[TTQ_VERIFICATION.md](TTQ_VERIFICATION.md)** - Technical verification of TTQ comparison
+- **[METHODOLOGY.md](METHODOLOGY.md)** - Experimental design and rationale
+- **[EXPERIMENTS_REFERENCE.sh](EXPERIMENTS_REFERENCE.sh)** - All 153 commands
+- **[PROJECT_SETUP.md](PROJECT_SETUP.md)** - Quick start guide
+- **[REPRODUCE.md](REPRODUCE.md)** - Step-by-step reproduction
+- **[TTQ_VERIFICATION.md](TTQ_VERIFICATION.md)** - Technical TTQ comparison details
+- **[results/README.md](results/README.md)** - Results directory structure
 
-## Reproducibility
+---
 
-This work follows strict reproducibility standards with full code, data, and analysis pipeline publicly available.
+## Project Structure
 
-### Quick Validation (10 minutes)
-
-Regenerate all paper artifacts from pre-computed results:
-
-```bash
-./reproduce.sh
+```text
+bitnet/
+├── bitnet/
+│   ├── nn/                      # 1.58-bit layer implementations
+│   │   ├── bitlinear.py         # BitLinear layer
+│   │   ├── bitconv2d.py         # BitConv2d layer
+│   │   ├── ttq_linear.py        # TTQ baseline (Zhu et al. 2017)
+│   │   └── ttq_conv2d.py        # TTQ conv2d baseline
+│   ├── layer_swap.py            # Full model quantization
+│   └── layer_swap_selective.py  # Selective quantization (ablation)
+├── experiments/
+│   ├── train.py                 # Standard training
+│   ├── train_kd.py              # Knowledge distillation
+│   ├── sweep.py                 # Experiment runner
+│   └── datasets/                # CIFAR-10/100, Tiny-ImageNet loaders
+├── analysis/                    # Result aggregation and paper generation
+└── paper/                       # LaTeX source (28 pages)
 ```
 
-This will:
-
-1. Set up the environment (`uv sync`)
-2. Aggregate 153 experiment results (`analysis/aggregate_results.py`)
-3. Generate 12 LaTeX tables (`analysis/generate_tables.py`)
-4. Generate 6 PDF figures (`analysis/generate_figures.py`)
-5. Compile the paper PDF (`paper/main.pdf`)
-
-**Verification:**
-
-- `results/processed/aggregated.csv` should match committed version (bit-exact)
-- `paper/main.pdf` should compile to 28 pages, ~550 KB
-- All tables/figures should match paper exactly
-
-### Full Experimental Reproduction (920 GPU-hours)
-
-To re-run all 153 experiments from scratch, see `EXPERIMENTS_REFERENCE.sh` for exact commands.
-
-**Requirements:**
-
-- 2× RTX 4090 or A100 GPUs
-- 50 GB disk space (checkpoints + TensorBoard logs)
-- 2-3 weeks wall-clock time on consumer GPUs
-
-**Phases:**
-
-1. FP32 Baselines (18 experiments)
-2. FP32+KD Control (9 experiments)
-3. BitNet Baselines (18 experiments)
-4. BitNet + Recipe (18 experiments)
-5. Statistical Power (14 experiments, n=10 seeds)
-6. TTQ Comparison (18 experiments)
-
-### Results Directory Structure
-
-```
-results/
-├── raw/                  # 72 standard training experiments
-│   └── {dataset}/{model}/{version}_s{seed}/
-│       ├── config.json        # Training hyperparameters
-│       └── results.json       # Final metrics
-├── raw_kd/               # 63 knowledge distillation experiments
-│   └── [same structure]
-└── processed/
-    └── aggregated.csv    # All 153 experiments aggregated
-```
-
-**Note:** Pre-computed results include only `config.json` and `results.json` per experiment. Full checkpoints (`best_model.pth`) and TensorBoard logs are not included due to size (8.9 GB total).
-
-### Deterministic Training
-
-All experiments use fixed seeds with deterministic settings:
-- Seeds: 42, 123, 456 (main experiments)
-- Additional seeds: 789, 1011, 1213, 1415, 1617, 1819, 2021 (statistical power)
-- PyTorch: `torch.manual_seed(seed)`, `cudnn.deterministic=True`
-- NumPy: `np.random.seed(seed)`
-
-Re-running experiments with the same seed produces bit-exact checkpoint MD5 hashes.
-
-## Experiment Plan
-
-### Main Experiments
-
-Compare standard FP32 vs BitNet 1.58-bit across:
-
-- **Models**: ResNet-18, ResNet-50
-- **Datasets**: CIFAR-10, CIFAR-100, Tiny-ImageNet
-- **Seeds**: 3 seeds per configuration for statistical significance (10 seeds for statistical power analysis)
-
-### Augmentation Ablation Study
-
-Investigate how data augmentation affects the accuracy gap between FP32 and BitNet:
-
-| Level      | Augmentation                  | Description                            |
-| ---------- | ----------------------------- | -------------------------------------- |
-| `basic`    | Crop + Flip                   | Baseline (RandomCrop, HorizontalFlip)  |
-| `randaug`  | + RandAugment                 | Learned augmentation policy            |
-| `cutout`   | + RandomErasing               | Patch-based regularization             |
-| `full`     | RandAugment + RandomErasing   | SOTA augmentation                      |
-
-**Research questions:**
-
-1. Does the FP32-BitNet accuracy gap narrow with stronger augmentation?
-2. Which augmentation benefits BitNet the most?
-3. What is the "true" accuracy cost of 1.58-bit quantization under SOTA training?
+---
 
 ## Citation
 
 ```bibtex
-@article{cazzani2025bitconv,
+@article{cazzani2026bitconv,
   title={1.58-bit Convolutional Neural Networks: A Systematic Comparison Study},
   author={Cazzani, Dario},
-  year={2025}
+  year={2026}
 }
 ```
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+[![CI](https://github.com/LabStrangeLoop/bitnet/actions/workflows/ci.yml/badge.svg)](https://github.com/LabStrangeLoop/bitnet/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
