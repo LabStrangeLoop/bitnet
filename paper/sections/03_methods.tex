@@ -24,14 +24,14 @@ Our research infrastructure ensures end-to-end reproducibility through automated
 
     \item \textbf{Aggregation:} \texttt{analysis/aggregate\_results.py} recursively scans \texttt{results/raw/} and \texttt{results/raw\_kd/} directories, loading all \texttt{results.json} files into a unified DataFrame saved as \texttt{results/processed/aggregated.csv}. No filtering or manual selection—all completed experiments included.
 
-    \item \textbf{Table generation:} \texttt{analysis/generate\_tables.py} reads the CSV and produces LaTeX tables (\texttt{paper/tmlr/tables/*.tex}) with:
+    \item \textbf{Table generation:} \texttt{analysis/generate\_tables.py} reads the CSV and produces LaTeX tables (\texttt{paper/tables/*.tex}) with:
     \begin{itemize}
         \item Mean ± standard deviation across seeds
         \item Statistical tests (t-test, Cohen's d)
         \item Gap calculations (FP32 - BitNet, FP32+KD - BitNet+Recipe)
     \end{itemize}
 
-    \item \textbf{Figure generation:} \texttt{analysis/generate\_figures.py} creates publication-quality matplotlib figures (\texttt{paper/tmlr/figures/*.pdf}) directly from CSV data.
+    \item \textbf{Figure generation:} \texttt{analysis/generate\_figures.py} creates publication-quality matplotlib figures (\texttt{paper/figures/*.pdf}) directly from CSV data.
 
     \item \textbf{Paper integration:} LaTeX \texttt{\\input\{tables/*.tex\}} and \texttt{\\includegraphics\{figures/*.png\}} commands directly reference generated artifacts. No copy-paste or manual number entry.
 \end{enumerate}
@@ -258,10 +258,10 @@ All materials publicly available at \texttt{[repo-url]}:
     \item \textbf{Training code:} \texttt{experiments/train.py}, \texttt{experiments/train\_kd.py}
     \item \textbf{Model implementations:} \texttt{bitnet/}, \texttt{experiments/models/}
     \item \textbf{Analysis scripts:} \texttt{analysis/*.py}
-    \item \textbf{Experiment documentation:} \texttt{PROPER\_BASELINE\_COMMANDS.sh} (all 135 commands)
+    \item \textbf{Experiment documentation:} \texttt{EXPERIMENTS\_REFERENCE.sh} (all 153 commands)
     \item \textbf{Raw results:} \texttt{results/raw/}, \texttt{results/raw\_kd/} (JSON files)
     \item \textbf{Processed data:} \texttt{results/processed/aggregated.csv}
-    \item \textbf{Generated artifacts:} \texttt{paper/tmlr/tables/*.tex}, \texttt{paper/tmlr/figures/*.pdf}
+    \item \textbf{Generated artifacts:} \texttt{paper/tables/*.tex}, \texttt{paper/figures/*.pdf}
 \end{itemize}
 
 Dependencies managed with \texttt{uv} (Python package manager), locked versions in \texttt{uv.lock} for exact reproducibility.

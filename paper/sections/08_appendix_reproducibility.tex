@@ -23,7 +23,7 @@ bitnet/
     aggregate_results.py      # CSV aggregation
     generate_tables.py        # LaTeX tables
     generate_paper_figures.py # Publication figures
-  paper/tmlr/          # Paper source
+  paper/                # Paper source
     main.tex           # Main document
     sections/          # Modular sections
     tables/            # Auto-generated LaTeX tables
@@ -61,12 +61,12 @@ uv run python -m analysis.aggregate_results
 uv run python -m analysis.generate_tables
 uv run python -m analysis.generate_paper_figures
 uv run python -m analysis.generate_model_size_table
-# Output: paper/tmlr/tables/*.tex, paper/tmlr/figures/*.pdf
+# Output: paper/tables/*.tex, paper/figures/*.pdf
 \end{verbatim}
 
 \textbf{Step 4: Compile paper}
 \begin{verbatim}
-cd paper/tmlr && make
+cd paper && make
 # Output: main.pdf (this document)
 \end{verbatim}
 
@@ -82,7 +82,7 @@ tar -xzf results_archive.tar.gz
 uv run python -m analysis.aggregate_results
 uv run python -m analysis.generate_tables
 uv run python -m analysis.generate_paper_figures
-cd paper/tmlr && make
+cd paper && make
 \end{verbatim}
 
 \textbf{Option 2: Spot-check individual experiments}
@@ -208,11 +208,11 @@ Complete source code, experiment commands, and documentation available at:
 \begin{itemize}
     \item[$\boxtimes$] \textbf{Code:} Complete source code provided
     \item[$\boxtimes$] \textbf{Data:} Public datasets with download links
-    \item[$\boxtimes$] \textbf{Model checkpoints:} All 135 experiment checkpoints archived
+    \item[$\boxtimes$] \textbf{Model checkpoints:} All 153 experiment checkpoints archived
     \item[$\boxtimes$] \textbf{Hyperparameters:} Documented in \texttt{config.json} per experiment
     \item[$\boxtimes$] \textbf{Seeds:} Fixed seeds (42, 123, 456) for reproducibility
     \item[$\boxtimes$] \textbf{Dependencies:} Exact versions in \texttt{uv.lock}
-    \item[$\boxtimes$] \textbf{Commands:} Complete experiment commands in \texttt{PROPER\_BASELINE\_COMMANDS.sh}
+    \item[$\boxtimes$] \textbf{Commands:} Complete experiment commands in \texttt{EXPERIMENTS\_REFERENCE.sh}
     \item[$\boxtimes$] \textbf{Random state:} Deterministic training (same seed = identical results)
     \item[$\boxtimes$] \textbf{Compute:} Hardware specs and total GPU-hours reported
     \item[$\boxtimes$] \textbf{Pipeline:} Automated artifact generation (no manual transcription)
