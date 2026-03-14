@@ -66,7 +66,9 @@ def mixup_criterion(
     criterion: nn.Module, pred: torch.Tensor, y_a: torch.Tensor, y_b: torch.Tensor, lam: float
 ) -> torch.Tensor:
     """Compute mixup loss."""
-    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
+    loss_a: torch.Tensor = criterion(pred, y_a)
+    loss_b: torch.Tensor = criterion(pred, y_b)
+    return lam * loss_a + (1 - lam) * loss_b
 
 
 def train_epoch(
