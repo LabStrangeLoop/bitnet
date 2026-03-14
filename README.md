@@ -130,6 +130,26 @@ uv run python -m analysis.generate_tables
 uv run python -m analysis.generate_figures
 ```
 
+### Results Directory Structure
+
+Experiments are organized into two directories:
+
+- **`results/raw/`**: 72 standard training experiments (FP32 baselines, BitNet baselines, ablations)
+- **`results/raw_kd/`**: 63 knowledge distillation experiments (FP32+KD, BitNet+KD, recipe variants)
+
+See [`results/README.md`](results/README.md) for detailed structure and naming conventions.
+
+**Quick analysis**:
+
+```bash
+# Aggregate all 135 experiments into DataFrame
+uv run python -m analysis.aggregate_results
+
+# Generate paper tables and figures
+uv run python -m analysis.generate_tables
+uv run python -m analysis.generate_figures
+```
+
 ## Supported Models
 
 | Model | timm name |
@@ -170,12 +190,88 @@ uv run ruff check .
 uv run mypy .
 ```
 
+## Documentation
+
+Root-level documentation files for reviewers and reproducibility:
+
+- **[README.md](README.md)** - This file; main project documentation
+- **[reproduce.sh](reproduce.sh)** - Quick validation script (10 minutes)
+- **[EXPERIMENTS_REFERENCE.sh](EXPERIMENTS_REFERENCE.sh)** - Full reproduction commands (920 GPU-hours)
+- **[METHODOLOGY.md](METHODOLOGY.md)** - Experimental design and phase structure
+- **[PROJECT_SETUP.md](PROJECT_SETUP.md)** - Quick start guide and project structure
+- **[REPRODUCE.md](REPRODUCE.md)** - Detailed reproduction guide
+- **[TTQ_VERIFICATION.md](TTQ_VERIFICATION.md)** - Technical verification of TTQ comparison
+
 ## Reproducibility
 
-- Fixed random seeds (42, 123, 456)
-- Deterministic CUDA operations
-- Complete environment in `uv.lock`
-- Hardware: 2x NVIDIA RTX A6000
+This work follows strict reproducibility standards with full code, data, and analysis pipeline publicly available.
+
+### Quick Validation (10 minutes)
+
+Regenerate all paper artifacts from pre-computed results:
+
+```bash
+./reproduce.sh
+```
+
+This will:
+
+1. Set up the environment (`uv sync`)
+2. Aggregate 153 experiment results (`analysis/aggregate_results.py`)
+3. Generate 12 LaTeX tables (`analysis/generate_tables.py`)
+4. Generate 6 PDF figures (`analysis/generate_figures.py`)
+5. Compile the paper PDF (`paper/main.pdf`)
+
+**Verification:**
+
+- `results/processed/aggregated.csv` should match committed version (bit-exact)
+- `paper/main.pdf` should compile to 28 pages, ~550 KB
+- All tables/figures should match paper exactly
+
+### Full Experimental Reproduction (920 GPU-hours)
+
+To re-run all 153 experiments from scratch, see `EXPERIMENTS_REFERENCE.sh` for exact commands.
+
+**Requirements:**
+
+- 2× RTX 4090 or A100 GPUs
+- 50 GB disk space (checkpoints + TensorBoard logs)
+- 2-3 weeks wall-clock time on consumer GPUs
+
+**Phases:**
+
+1. FP32 Baselines (18 experiments)
+2. FP32+KD Control (9 experiments)
+3. BitNet Baselines (18 experiments)
+4. BitNet + Recipe (18 experiments)
+5. Statistical Power (14 experiments, n=10 seeds)
+6. TTQ Comparison (18 experiments)
+
+### Results Directory Structure
+
+```
+results/
+├── raw/                  # 72 standard training experiments
+│   └── {dataset}/{model}/{version}_s{seed}/
+│       ├── config.json        # Training hyperparameters
+│       └── results.json       # Final metrics
+├── raw_kd/               # 63 knowledge distillation experiments
+│   └── [same structure]
+└── processed/
+    └── aggregated.csv    # All 153 experiments aggregated
+```
+
+**Note:** Pre-computed results include only `config.json` and `results.json` per experiment. Full checkpoints (`best_model.pth`) and TensorBoard logs are not included due to size (8.9 GB total).
+
+### Deterministic Training
+
+All experiments use fixed seeds with deterministic settings:
+- Seeds: 42, 123, 456 (main experiments)
+- Additional seeds: 789, 1011, 1213, 1415, 1617, 1819, 2021 (statistical power)
+- PyTorch: `torch.manual_seed(seed)`, `cudnn.deterministic=True`
+- NumPy: `np.random.seed(seed)`
+
+Re-running experiments with the same seed produces bit-exact checkpoint MD5 hashes.
 
 ## Experiment Plan
 

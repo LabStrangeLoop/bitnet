@@ -1,5 +1,10 @@
 """Generate publication-quality figures for the paper.
 
+⚠️ IMPORTANT: This script uses HARDCODED data from experiments.
+After Wave 2 completes, update the hardcoded values with final results.
+
+For automated figure generation during development, use generate_figures.py instead.
+
 This script creates professional figures for:
 1. Layer ablation results (conv1 importance)
 2. Recipe progression (baseline → KD → conv1 → combo)
@@ -41,7 +46,7 @@ COLORS = {
 }
 
 
-def create_output_dir(output_dir: str = "paper/figures") -> Path:
+def create_output_dir(output_dir: str = "paper/tmlr/figures") -> Path:
     """Create output directory if it doesn't exist."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -108,70 +113,69 @@ def figure_layer_ablation(output: Path) -> None:
 
 
 def figure_recipe_progression(output: Path) -> None:
-    """Figure: Recipe progression showing additive benefits.
+    """Figure: Recipe progression showing mixed-precision benefits (NO KD).
 
-    Shows accuracy improvement from baseline through each intervention.
+    Shows accuracy improvement from FP32 baseline → BitNet → BitNet+keep_conv1.
+    Updated to reflect KD negative results - recipe is mixed-precision only.
     """
-    # Data for CIFAR-10 and CIFAR-100
-    datasets = ["CIFAR-10", "CIFAR-100", "Tiny ImageNet"]
+    datasets = ["CIFAR-10", "CIFAR-100", "Tiny-ImageNet"]
 
-    # Accuracies for each method
-    fp32 = [88.89, 62.40, 54.85]
-    bitnet = [85.40, 58.06, 49.04]
-    kd_only = [86.66, 60.55, None]  # No KD-only for Tiny ImageNet
-    conv1_only = [87.40, 61.27, None]  # No conv1-only for Tiny ImageNet
-    combo = [88.48, 63.40, 56.15]
+    # Accuracies from Wave 1 experiments (ResNet-18, basic augmentation)
+    # FP32 baseline (std_s42/123/456 avg), BitNet baseline (bit_s42/123/456 avg),
+    # BitNet+keep_conv1 (bit_keep_conv1_s42/123/456 avg)
+    fp32 = [96.07, 79.14, 67.04]  # FP32 ResNet-18 baselines
+    bitnet = [94.64, 74.93, 62.10]  # BitNet baselines
+    recipe = [95.07, 75.74, 62.29]  # BitNet + FP32 conv1 (NO KD)
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=False)
+    fig, axes = plt.subplots(1, 3, figsize=(10, 4), sharey=False)
 
-    for i, (ax, ds, fp, bn, kd, c1, cb) in enumerate(zip(axes, datasets, fp32, bitnet, kd_only, conv1_only, combo)):
-        if ds == "Tiny ImageNet":
-            # Simplified view for Tiny ImageNet
-            methods = ["FP32", "BitNet", "Recipe"]
-            values = [fp, bn, cb]
-            colors = [COLORS["fp32"], COLORS["bitnet"], COLORS["combo"]]
-        else:
-            methods = ["FP32", "BitNet", "+KD", "+conv1", "Recipe"]
-            values = [fp, bn, kd, c1, cb]
-            colors = [COLORS["fp32"], COLORS["bitnet"], COLORS["kd"], COLORS["conv1"], COLORS["combo"]]
+    for i, (ax, ds, fp, bn, rec) in enumerate(zip(axes, datasets, fp32, bitnet, recipe)):
+        # 3-step progression: FP32 → BitNet → Recipe
+        methods = ["FP32\nBaseline", "BitNet\nBaseline", "BitNet+\nFP32 conv1"]
+        values = [fp, bn, rec]
+        colors = [COLORS["fp32"], COLORS["bitnet"], COLORS["combo"]]
 
         bars = ax.bar(methods, values, color=colors, edgecolor="black", linewidth=0.5)
 
         # Add value labels
         for bar, v in zip(bars, values):
             ax.annotate(
-                f"{v:.1f}%",
+                f"{v:.2f}%",
                 xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
                 ha="center",
                 va="bottom",
-                fontsize=8,
+                fontsize=9,
                 fontweight="bold",
             )
 
         # Add horizontal line for FP32 reference
         ax.axhline(y=fp, color=COLORS["fp32"], linestyle="--", linewidth=1, alpha=0.7)
 
-        ax.set_title(ds, fontweight="bold")
+        ax.set_title(ds, fontweight="bold", fontsize=12)
         ax.set_ylabel("Accuracy (%)" if i == 0 else "")
 
         # Set y limits with some padding
-        y_min = min(values) - 3
-        y_max = max(max(values), fp) + 3
+        y_min = min(values) - 2
+        y_max = max(values) + 2
         ax.set_ylim(y_min, y_max)
 
-        # Rotate x labels
-        ax.set_xticklabels(methods, rotation=30, ha="right")
+        # Rotate x labels slightly
+        ax.set_xticklabels(methods, rotation=20, ha="right", fontsize=9)
 
-        # Add delta annotation for recipe
-        delta = cb - fp
-        delta_str = f"+{delta:.1f}%" if delta > 0 else f"{delta:.1f}%"
-        delta_color = COLORS["combo"] if delta > 0 else COLORS["bitnet"]
+        # Add gap annotation for recipe vs FP32
+        gap = fp - rec
+        gap_str = f"Gap: {gap:.2f}%"
         ax.annotate(
-            delta_str, xy=(len(methods) - 1, cb + 1), ha="center", fontsize=9, fontweight="bold", color=delta_color
+            gap_str,
+            xy=(2, rec - 0.5),
+            ha="center",
+            fontsize=8,
+            fontweight="bold",
+            color=COLORS["bitnet"] if gap > 2 else COLORS["combo"],
         )
 
     # Add overall title
-    fig.suptitle("Recipe Progression: From Baseline to Full Recovery", fontweight="bold", y=1.02)
+    fig.suptitle("Recipe Progression: Mixed-Precision (FP32 conv1) Without KD", fontweight="bold", y=1.02, fontsize=14)
 
     plt.tight_layout()
     plt.savefig(output / "recipe_progression.pdf")

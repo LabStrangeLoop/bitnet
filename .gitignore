@@ -56,6 +56,9 @@ multirun/
 *.swo
 *~
 
+# Claude Code development tooling
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -63,6 +66,19 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# LaTeX compilation artifacts
+*.aux
+*.log
+*.out
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
 
 # PDFs
 pdf/

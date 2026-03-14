@@ -1,8 +1,12 @@
 #!/bin/bash
-# One-command reproduction script
+# Quick validation workflow for reviewers (10 minutes)
+# Assumes results/ directory contains pre-computed results.json files
 set -e
 
-echo "🔬 Reproducing 1.58-bit Neural Networks paper..."
+echo "🔬 BitNet Reproducibility Validation..."
+echo ""
+echo "This script validates that paper artifacts can be regenerated from results/"
+echo "Full experimental reproduction requires 920 GPU-hours (see EXPERIMENTS_REFERENCE.sh)"
 echo ""
 
 # Setup environment
@@ -11,30 +15,31 @@ uv sync
 echo "✓ Environment ready"
 echo ""
 
-# Run core benchmarks
-echo "🚀 Running core benchmarks..."
-# uv run python experiments/sweep.py experiment=core_benchmarks
-echo "✓ Core benchmarks complete"
-echo ""
-
-# Run challenging benchmarks
-echo "🎯 Running challenging benchmarks..."
-# uv run python experiments/sweep.py experiment=challenging_benchmarks
-echo "✓ Challenging benchmarks complete"
-echo ""
-
 # Aggregate results
-echo "📊 Aggregating results..."
-# uv run python analysis/aggregate_results.py
-echo "✓ Results aggregated"
+echo "📊 Aggregating 153 experiment results..."
+uv run python -m analysis.aggregate_results
+echo "✓ Created: results/processed/aggregated.csv"
 echo ""
 
 # Generate paper content
 echo "📝 Generating paper tables and figures..."
-# uv run python analysis/generate_tables.py
-# uv run python analysis/generate_figures.py
-echo "✓ Paper content generated"
+uv run python -m analysis.generate_tables
+uv run python -m analysis.generate_figures
+echo "✓ Created: paper/tables/*.tex and paper/figures/*.pdf"
 echo ""
 
-echo "✅ Reproduction complete!"
-echo "Check results/ and paper/ directories for outputs"
+# Compile paper
+echo "📄 Compiling paper PDF..."
+cd paper && pdflatex main.tex && pdflatex main.tex && pdflatex main.tex && cd ..
+echo "✓ Created: paper/main.pdf"
+echo ""
+
+echo "✅ Validation complete!"
+echo ""
+echo "Generated artifacts:"
+echo "  - results/processed/aggregated.csv (aggregated results)"
+echo "  - paper/tables/*.tex (12 LaTeX tables)"
+echo "  - paper/figures/*.pdf (6 figures)"
+echo "  - paper/main.pdf (28-page paper)"
+echo ""
+echo "To run full experiments (920 GPU-hours), see: EXPERIMENTS_REFERENCE.sh"

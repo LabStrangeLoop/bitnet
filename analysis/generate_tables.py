@@ -20,6 +20,9 @@ def accuracy_table(df: pd.DataFrame, augment: str = "basic") -> str:
     if len(versions) < 2:
         return f"% Insufficient data: only {list(versions)} version(s) available"
 
+    # Check if TTQ data exists
+    has_ttq = "ttq" in versions
+
     pivot = df.pivot_table(
         values="best_acc",
         index=["model", "dataset"],
@@ -27,15 +30,24 @@ def accuracy_table(df: pd.DataFrame, augment: str = "basic") -> str:
         aggfunc=["mean", "std"],
     ).round(2)
 
-    caption = rf"Test accuracy (\%) for standard and 1.58-bit models ({augment} augmentation)"
+    # Build table header dynamically based on available versions
+    if has_ttq:
+        caption = rf"Test accuracy (\%) for standard, BitNet, and TTQ models ({augment} augmentation)"
+        tabular_cols = "llcccccc"
+        header = r"Model & Dataset & Std (mean) & Std (std) & Bit (mean) & Bit (std) & TTQ (mean) & TTQ (std) \\"
+    else:
+        caption = rf"Test accuracy (\%) for standard and 1.58-bit models ({augment} augmentation)"
+        tabular_cols = "llcccc"
+        header = r"Model & Dataset & Std (mean) & Std (std) & Bit (mean) & Bit (std) \\"
+
     lines = [
         r"\begin{table}[h]",
         r"\centering",
         rf"\caption{{{caption}}}",
         rf"\label{{tab:accuracy_{augment}}}",
-        r"\begin{tabular}{llcccc}",
+        rf"\begin{{tabular}}{{{tabular_cols}}}",
         r"\toprule",
-        r"Model & Dataset & Std (mean) & Std (std) & Bit (mean) & Bit (std) \\",
+        header,
         r"\midrule",
     ]
 
@@ -52,6 +64,14 @@ def accuracy_table(df: pd.DataFrame, augment: str = "basic") -> str:
         bit_std_str = f"{bit_std:.2f}" if pd.notna(bit_std) else "-"
 
         cols = [model, dataset, std_mean_str, std_std_str, bit_mean_str, bit_std_str]
+
+        if has_ttq:
+            ttq_mean = row.get(("mean", "ttq"), float("nan"))
+            ttq_std = row.get(("std", "ttq"), float("nan"))
+            ttq_mean_str = f"{ttq_mean:.2f}" if pd.notna(ttq_mean) else "-"
+            ttq_std_str = f"{ttq_std:.2f}" if pd.notna(ttq_std) else "-"
+            cols.extend([ttq_mean_str, ttq_std_str])
+
         lines.append(" & ".join(cols) + r" \\")
 
     lines.extend([r"\bottomrule", r"\end{tabular}", r"\end{table}"])
@@ -235,6 +255,58 @@ def layer_ablation_table(df: pd.DataFrame, dataset: str = "cifar10", augment: st
     return "\n".join(lines)
 
 
+def kd_statistics_table(df: pd.DataFrame) -> str:
+    """Generate LaTeX table with paired t-tests for KD failure (BitNet vs BitNet+KD)."""
+    from analysis.statistical_analysis import kd_effect_ttest
+
+    configs = [
+        ("resnet18", "cifar10"),
+        ("resnet18", "cifar100"),
+        ("resnet18", "tiny-imagenet"),
+        ("resnet50", "cifar10"),
+        ("resnet50", "cifar100"),
+        ("resnet50", "tiny-imagenet"),
+    ]
+
+    results = []
+    for model, dataset in configs:
+        stats = kd_effect_ttest(df, model, dataset, ablation="none")
+        if "error" not in stats:
+            results.append(stats)
+
+    if len(results) == 0:
+        return "% No KD comparison data available"
+
+    lines = [
+        r"\begin{table}[h]",
+        r"\centering",
+        r"\caption{Paired t-tests: BitNet vs BitNet+KD (Knowledge Distillation degradation)}",
+        r"\label{tab:kd_statistics}",
+        r"\begin{tabular}{llrrrrc}",
+        r"\toprule",
+        r"Model & Dataset & BitNet & +KD & $\Delta$ & $p$ & Cohen's $d$ \\",
+        r"\midrule",
+    ]
+
+    for r in results:
+        sig = "*" if r["significant"] else ""
+        lines.append(
+            f"{r['model']} & {r['dataset']} & {r['baseline_mean']:.2f} & "
+            f"{r['kd_mean']:.2f} & {r['mean_diff']:+.2f} & "
+            f"{r['p_value']:.4f}{sig} & {r['cohens_d']:.2f} \\\\"
+        )
+
+    lines.extend(
+        [
+            r"\bottomrule",
+            r"\multicolumn{7}{l}{\footnotesize * $p < 0.05$} \\",
+            r"\end{tabular}",
+            r"\end{table}",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tmlr/tables") -> None:
     """Save all tables to files."""
     output = Path(output_dir)
@@ -244,6 +316,7 @@ def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "
     (output / "accuracy_full.tex").write_text(accuracy_table(df, augment="full"))
     (output / "augmentation_ablation.tex").write_text(augmentation_ablation_table(df))
     (output / "statistics.tex").write_text(statistical_table(comparisons))
+    (output / "kd_statistics.tex").write_text(kd_statistics_table(df))
     (output / "efficiency.tex").write_text(efficiency_table())
     (output / "layer_ablation.tex").write_text(layer_ablation_table(df, dataset="cifar10"))
     print(f"Tables saved to {output}")
@@ -253,7 +326,8 @@ if __name__ == "__main__":
     from analysis.aggregate_results import load_results
     from analysis.statistical_analysis import run_all_comparisons
 
-    df = load_results()
+    # Load from both regular and KD experiment directories
+    df = load_results(["results/raw", "results/raw_kd"])
     if len(df) == 0:
         print("No results found")
         raise SystemExit(0)

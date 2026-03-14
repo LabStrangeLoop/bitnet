@@ -1,12 +1,23 @@
 #!/bin/bash
-# Experimental Design Reference: 135 Experiments + 14 Statistical Power
-# BitNet b1.58 Ternary Quantization for CNNs
-# Architecture: CIFAR-adapted stem (3×3 stride-1, no maxpool) for all datasets
+# Full Experimental Reproduction: 153 Experiments (920 GPU-hours)
 #
-# Dependency Structure:
-# - Wave 1: Phase 1 (FP32) + Phase 3 (BitNet) - can run in parallel (36 exp)
-# - Wave 2: Phase 2, 2.5, 2.75, 2.8, 2.9, 4 - require Phase 1 teachers (99 exp)
-# - Phase 5: Statistical power (n=10) - independent (14 exp)
+# This script contains the EXACT commands for all experiments in the paper.
+# WARNING: Running all experiments requires:
+#   - 920 GPU-hours on 2× RTX 4090 or A100 GPUs
+#   - ~50 GB disk space for checkpoints + TensorBoard logs
+#   - 2-3 weeks of wall-clock time on consumer GPUs
+#
+# For quick validation of paper artifacts (10 minutes), use: ./reproduce.sh
+#
+# Experimental Design: 6 Phases
+# - Phase 1: FP32 Baselines (18 experiments)
+# - Phase 2: FP32+KD Control (9 experiments)
+# - Phase 3: BitNet Baselines (18 experiments)
+# - Phase 4: BitNet + Recipe (18 experiments)
+# - Phase 5: Statistical Power n=10 (14 experiments)
+# - Phase 6: TTQ Comparison (18 experiments)
+#
+# All experiments use CIFAR-adapted stems (3×3 stride-1, no maxpool) for small images
 
 ################################################################################
 # PHASE 1: FP32 Baselines (18 experiments)
@@ -232,10 +243,9 @@ uv run python -m experiments.train_kd --use-cifar-stem --model resnet18 --datase
 
 
 ################################################################################
-# PHASE 6: TTQ Baseline (18 experiments) - ROUND 2 TMLR RESPONSE
+# PHASE 6: TTQ Baseline (18 experiments)
 ################################################################################
 # Purpose: Compare BitNet+Recipe against TTQ (Trained Ternary Quantization)
-# Context: TMLR Round 1 Reviewer 2 BLOCKING ISSUE - TTQ comparison mandatory
 # Tests: TTQ on same configurations as Phase 1/3 for fair comparison
 #
 # TTQ (Zhu et al., ICLR 2017) - State-of-the-art ternary quantization:
