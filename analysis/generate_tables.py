@@ -9,6 +9,16 @@ from experiments.config import MODELS
 from experiments.datasets.factory import AUGMENT_CHOICES
 
 
+def format_dataset_name(dataset: str) -> str:
+    """Format dataset name for LaTeX tables."""
+    name_map = {
+        "cifar10": "CIFAR-10",
+        "cifar100": "CIFAR-100",
+        "tiny_imagenet": "Tiny-IN",
+    }
+    return name_map.get(dataset, dataset)
+
+
 def accuracy_table(df: pd.DataFrame, augment: str = "basic") -> str:
     """Generate LaTeX table comparing standard vs bit accuracy by model and dataset."""
     if "augment" in df.columns:
@@ -63,7 +73,7 @@ def accuracy_table(df: pd.DataFrame, augment: str = "basic") -> str:
         bit_mean_str = f"{bit_mean:.2f}" if pd.notna(bit_mean) else "-"
         bit_std_str = f"{bit_std:.2f}" if pd.notna(bit_std) else "-"
 
-        cols = [model, dataset, std_mean_str, std_std_str, bit_mean_str, bit_std_str]
+        cols = [model, format_dataset_name(dataset), std_mean_str, std_std_str, bit_mean_str, bit_std_str]
 
         if has_ttq:
             ttq_mean = row.get(("mean", "ttq"), float("nan"))
@@ -103,7 +113,7 @@ def augmentation_ablation_table(df: pd.DataFrame) -> str:
         df = df[df["ablation"] == "none"]
 
     for (model, dataset), group in df.groupby(["model", "dataset"]):
-        row_vals = [str(model), str(dataset)]
+        row_vals = [str(model), format_dataset_name(str(dataset))]
         for augment in augments:
             aug_data = group[group["augment"] == augment]
             if len(aug_data) == 0:
@@ -141,7 +151,7 @@ def statistical_table(comparisons: pd.DataFrame) -> str:
     for _, row in valid.iterrows():
         sig = "*" if row["significant"] else ""
         lines.append(
-            f"{row['model']} & {row['dataset']} & {row['diff']:.2f} & "
+            f"{row['model']} & {format_dataset_name(row['dataset'])} & {row['diff']:.2f} & "
             f"{row['t_stat']:.2f} & {row['p_value']:.3f}{sig} & {row['cohens_d']:.2f} \\\\"
         )
 
@@ -208,10 +218,15 @@ def layer_ablation_table(df: pd.DataFrame, dataset: str = "cifar10", augment: st
     # Get FP32 baseline
     fp32_df = df[(df["version"] == "std") & (df["ablation"] == "none")]
 
+    # Format caption
+    caption = (
+        rf"Layer-wise ablation on {format_dataset_name(dataset)}: " r"accuracy when keeping specific layers in FP32"
+    )
+
     lines = [
         r"\begin{table}[h]",
         r"\centering",
-        rf"\caption{{Layer-wise ablation on {dataset.upper()}: accuracy when keeping specific layers in FP32}}",
+        rf"\caption{{{caption}}}",
         rf"\label{{tab:layer_ablation_{dataset}}}",
         r"\begin{tabular}{llcc}",
         r"\toprule",
@@ -291,7 +306,7 @@ def kd_statistics_table(df: pd.DataFrame) -> str:
     for r in results:
         sig = "*" if r["significant"] else ""
         lines.append(
-            f"{r['model']} & {r['dataset']} & {r['baseline_mean']:.2f} & "
+            f"{r['model']} & {format_dataset_name(r['dataset'])} & {r['baseline_mean']:.2f} & "
             f"{r['kd_mean']:.2f} & {r['mean_diff']:+.2f} & "
             f"{r['p_value']:.4f}{sig} & {r['cohens_d']:.2f} \\\\"
         )
@@ -307,7 +322,7 @@ def kd_statistics_table(df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tmlr/tables") -> None:
+def save_tables(df: pd.DataFrame, comparisons: pd.DataFrame, output_dir: str = "paper/tables") -> None:
     """Save all tables to files."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
