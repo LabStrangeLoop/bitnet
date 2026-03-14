@@ -1,4 +1,4 @@
-# 1.58-bit Convolutional Neural Networks: A Systematic Comparison Study
+# Understanding and Closing the 1.58-bit Quantization Gap in CNNs: An Empirical Study
 
 > Research reproducibility repository for TMLR submission
 
@@ -295,7 +295,7 @@ bitnet/
 
 ```bibtex
 @article{cazzani2026bitconv,
-  title={1.58-bit Convolutional Neural Networks: A Systematic Comparison Study},
+  title={Understanding and Closing the 1.58-bit Quantization Gap in CNNs: An Empirical Study},
   author={Cazzani, Dario},
   year={2026}
 }
