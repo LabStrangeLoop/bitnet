@@ -50,7 +50,7 @@ All tables and figures are programmatically generated from experiment results:
 
 ```bash
 # From project root
-cd /Users/dariocazzani/code/lab-strange-loop/bitnet
+cd /path/to/project/root
 
 # Aggregate experiment results
 uv run python -m analysis.aggregate_results
