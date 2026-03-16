@@ -135,7 +135,7 @@ See [`results/README.md`](results/README.md) for detailed naming conventions.
 - [uv](https://github.com/astral-sh/uv) package manager
 
 ```bash
-git clone https://anonymous.4open.science/r/bitnet
+git clone https://anonymous.4open.science/r/bitnet-0ABF
 cd bitnet
 uv sync
 ```
