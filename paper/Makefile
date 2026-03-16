@@ -1,9 +1,12 @@
 MAIN = main
-LATEX = pdflatex
+LATEX = pdflatex -interaction=nonstopmode
+BIBTEX = bibtex
 
 all: $(MAIN).pdf
 
-$(MAIN).pdf: $(MAIN).tex preamble.tex macros.tex bibliography.tex
+$(MAIN).pdf: $(MAIN).tex preamble.tex macros.tex references.bib
+	$(LATEX) $(MAIN)
+	$(BIBTEX) $(MAIN)
 	$(LATEX) $(MAIN)
 	$(LATEX) $(MAIN)
 

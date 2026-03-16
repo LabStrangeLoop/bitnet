@@ -1,10 +1,8 @@
-% TMLR Submission: Understanding and Closing the 1.58-bit Quantization Gap in CNNs
-% New version with modular sections
-
 \documentclass[10pt]{article}
-
-% Page geometry
-\usepackage[margin=1in, top=0.9in, bottom=0.9in]{geometry}
+\PassOptionsToPackage{table}{xcolor}
+\usepackage{tmlr}
+% If accepted, instead use the following line for the camera-ready submission:
+%\usepackage[accepted]{tmlr}
 
 % Import packages and macros
 \input{preamble}
@@ -13,19 +11,20 @@
 % Graphics path for figures
 \graphicspath{{figures/}}
 
+\def\month{MM}
+\def\year{YYYY}
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
+
 % =============================================================================
 % METADATA
 % =============================================================================
 
-\title{Understanding and Closing the 1.58-bit Quantization Gap in CNNs:\\An Empirical Study}
+\title{Understanding and Closing the 1.58-bit Quantization Gap in CNNs: An Empirical Study}
 
-\author{
-  Dario Cazzani\\
-  Cisco Systems Inc.\\
-  \texttt{dcazzani@cisco.com}
-}
-
-\date{}
+% Authors must not appear in the submitted version.
+% Non-anonymous submissions will be rejected without review.
+\author{\name Dario Cazzani \email dcazzani@cisco.com \\
+      \addr Cisco Systems Inc.}
 
 % =============================================================================
 % DOCUMENT
