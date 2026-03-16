@@ -135,7 +135,7 @@ See [`results/README.md`](results/README.md) for detailed naming conventions.
 - [uv](https://github.com/astral-sh/uv) package manager
 
 ```bash
-git clone https://github.com/LabStrangeLoop/bitnet.git
+git clone https://anonymous.4open.science/r/bitnet
 cd bitnet
 uv sync
 ```
@@ -294,9 +294,9 @@ bitnet/
 ## Citation
 
 ```bibtex
-@article{cazzani2026bitconv,
+@article{anonymous2026bitconv,
   title={Understanding and Closing the 1.58-bit Quantization Gap in CNNs: An Empirical Study},
-  author={Cazzani, Dario},
+  author={Anonymous},
   year={2026}
 }
 ```
@@ -307,6 +307,5 @@ bitnet/
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-[![CI](https://github.com/LabStrangeLoop/bitnet/actions/workflows/ci.yml/badge.svg)](https://github.com/LabStrangeLoop/bitnet/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
